@@ -1,0 +1,72 @@
+# Outdoor small (25 x 25 m, 0.25 m/cell), random start and goal, random obstacles
+# Moving obstacle settings are the same as sixteen_pillar/random.yaml (used to test generalization of the pillar-trained model)
+# NOTE: do not set random_map_mode here; its presence (even False) turns on random map mode
+name: "outdoor_small_random"
+known_static_map: "maps/eval/outdoor_small/map.yaml"
+min_path_length_ratio: 1.0 # [-] minimum path length ratio to the map size
+# start and goal are sampled until both are collision free and a path exists
+start_pose_type: "random" # "candidates" or "specified" or "random"
+goal_pose_type: "random" # "candidates" or "specified" or "random"
+
+start_pose_constraints:
+  x:
+    max: 23.5
+    min: 1.5
+  y:
+    max: 23.5
+    min: 1.5
+  yaw:
+    max: 3.14
+    min: -3.14
+
+goal_pose_constraints:
+  x:
+    max: 23.5
+    min: 1.5
+  y:
+    max: 23.5
+    min: 1.5
+  yaw:
+    max: 3.14
+    min: -3.14
+
+moving_obstacles:
+  type: "random" # "candidates" or "all" or "random"
+  num: 10
+  candidates:
+    - id: 0
+      shape: "circle"
+      size: [1.5, 0]
+      motion_model:
+        ["point_mass_model", "social_force_model", "reactive_stop_model"]
+      x: 7.5
+      y: 2.5
+      yaw: 0.0
+      vx: 0.0
+      vy: 0.0
+      vyaw: 0.0
+
+  constraints:
+    size:
+      max: [1.5, 0.0]
+      min: [1.5, 0.0]
+    position:
+      x:
+        max: 24
+        min: 1
+      y:
+        max: 24
+        min: 1
+      yaw:
+        max: 3.14
+        min: -3.14
+    velocity:
+      vx:
+        max: 1.0
+        min: -1.0
+      vy:
+        max: 1.0
+        min: -1.0
+      vyaw:
+        max: 1.0
+        min: -1.0

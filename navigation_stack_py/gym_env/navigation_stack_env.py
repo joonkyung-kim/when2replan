@@ -407,44 +407,44 @@ class NavigationStackEnv(gym.Env):
                     self._traj_image_arr_buffer.append(traj_image_array)
                     self._obstacle_traj_image_arr_buffer.append(obstacle_traj_array)
                     
-                # log visualized data
-                if self._save_visualized_data:
-                    visualized_data = {}
-                    visualized_data["robot_state"] = robot_obs.state
-                    
-                    visualized_data["scan"] = robot_obs.scan_points.get_points()
-                    
-                    visualized_data["is_replan"] = rollout_num != 1 and i == 0
-                    
-                    visualized_data["local_path_list"] = local_planner_output.predict_path_list
-                    
-                    visualized_data["local_path_best_index"] = local_planner_output.best_index
-                    
-                    visualized_data["goal"] = self._goal_state.pos
-                    
-                    obstacle_list = self._simulator.get_obstacles_status()
-                    
-                    # Clip obstacle position to map boundary to visualize (This is due to a bug of pymap2d)
-                    viz_obstacle_list = []
-                    for obstacle in obstacle_list:
-                        pos = self._static_map.clip(obstacle.pos)
-                        viz_obstacle = MovingObstacle(
-                            pos=pos,
-                            yaw=obstacle.yaw,
-                            linear_vel=obstacle.linear_vel,
-                            target_vel=obstacle.target_vel,
-                            angular_vel=obstacle.angular_vel,
-                            size=obstacle.size,
-                            shape=obstacle.shape,
-                            motion_model=obstacle.motion_model,
-                        )
-                        viz_obstacle_list.append(viz_obstacle)
-                              
-                    visualized_data["obstacles"] = viz_obstacle_list
-                    
-                    visualized_data["global_path"] = global_reference_path[0]
-                    
-                    visualized_data_list.append(visualized_data)
+            # log visualized data (independent of visualize_mode, used for offline video rendering)
+            if self._save_visualized_data:
+                visualized_data = {}
+                visualized_data["robot_state"] = robot_obs.state
+
+                visualized_data["scan"] = robot_obs.scan_points.get_points()
+
+                visualized_data["is_replan"] = rollout_num != 1 and i == 0
+
+                visualized_data["local_path_list"] = local_planner_output.predict_path_list
+
+                visualized_data["local_path_best_index"] = local_planner_output.best_index
+
+                visualized_data["goal"] = self._goal_state.pos
+
+                obstacle_list = self._simulator.get_obstacles_status()
+
+                # Clip obstacle position to map boundary to visualize (This is due to a bug of pymap2d)
+                viz_obstacle_list = []
+                for obstacle in obstacle_list:
+                    pos = self._static_map.clip(obstacle.pos)
+                    viz_obstacle = MovingObstacle(
+                        pos=pos,
+                        yaw=obstacle.yaw,
+                        linear_vel=obstacle.linear_vel,
+                        target_vel=obstacle.target_vel,
+                        angular_vel=obstacle.angular_vel,
+                        size=obstacle.size,
+                        shape=obstacle.shape,
+                        motion_model=obstacle.motion_model,
+                    )
+                    viz_obstacle_list.append(viz_obstacle)
+
+                visualized_data["obstacles"] = viz_obstacle_list
+
+                visualized_data["global_path"] = global_reference_path[0]
+
+                visualized_data_list.append(visualized_data)
             
             # If collision or goal reached, end rollout
             if robot_obs.is_collision or local_planner_output.is_goal_reached:

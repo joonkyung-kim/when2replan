@@ -17,7 +17,54 @@ def rhu(number: float, decimals=0) -> int:
     return int(Decimal(number).quantize(Decimal("0"), rounding=ROUND_HALF_UP))
 
 
-def main(traj_data_pkl: str, map_pkl: str = None, save_path: str = None) -> None:
+def signed_area(polygon: np.ndarray) -> float:
+    polygon = np.asarray(polygon)
+    x, y = polygon[:, 0], polygon[:, 1]
+    return 0.5 * (np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+
+
+def render_static_map(
+    map_polygons: List[np.ndarray], size: tuple, scale: float, center: tuple, color: list
+) -> pygame.Surface:
+    """
+    Render static map polygons (contours of occupied cells) to a transparent layer.
+    Outer contours and hole contours have opposite orientation (outer: negative area),
+    so obstacles are filled and holes inside them (e.g. rooms surrounded by walls) are cut out again.
+    """
+    transparent = (255, 0, 255)
+    layer = pygame.Surface(size)
+    layer.fill(transparent)
+    layer.set_colorkey(transparent)
+
+    # draw larger contours first so that nested contours are drawn on top of them
+    for polygon in sorted(map_polygons, key=lambda p: abs(signed_area(p)), reverse=True):
+        points = [node * scale + center for node in polygon]
+        if len(points) == 1:
+            # single occupied cell
+            pygame.draw.circle(layer, color, points[0], 0.1 * scale)
+        elif len(points) == 2:
+            # one cell wide line
+            pygame.draw.line(layer, color, points[0], points[1], max(2, rhu(0.1 * scale)))
+        elif signed_area(polygon) <= 0:
+            # outer contour of obstacle
+            pygame.draw.polygon(layer, color, points, width=0)
+        else:
+            # hole inside obstacle: cut out and keep its boundary
+            pygame.draw.polygon(layer, transparent, points, width=0)
+            pygame.draw.polygon(layer, color, points, width=max(2, rhu(0.1 * scale)))
+
+    return layer
+
+
+def main(
+    traj_data_pkl: str, map_pkl: str = None, save_path: str = None, headless: bool = False
+) -> None:
+    """
+    headless: render without opening a window and as fast as possible (for saving the video only)
+    """
+    if headless:
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
+
     # simulation settings
     robot_radius = 1.0  # meters
     line_width = 10  # robot line width
@@ -60,7 +107,7 @@ def main(traj_data_pkl: str, map_pkl: str = None, save_path: str = None) -> None
         save_path = os.path.join(dir, name.replace(".pkl", ".mp4"))
 
     # Prepare video writer
-    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(save_path, fourcc, render_fps, (window_width, window_height))
 
     with open(traj_data_pkl, "rb") as f:
@@ -80,6 +127,9 @@ def main(traj_data_pkl: str, map_pkl: str = None, save_path: str = None) -> None
     clock = pygame.time.Clock()
     canvas = pygame.Surface((window_width, window_height))
     canvas.fill(white)
+    map_layer = render_static_map(
+        map_polygons, (window_width, window_height), scale, center, black
+    )
 
     robot_traj = []
     replan_history = []
@@ -141,13 +191,7 @@ def main(traj_data_pkl: str, map_pkl: str = None, save_path: str = None) -> None
         )
 
         # draw map
-        for polygon in map_polygons:
-            pygame.draw.polygon(
-                surface=canvas,
-                color=black,
-                points=[node * scale + center for node in polygon],
-                width=0,
-            )
+        canvas.blit(map_layer, (0, 0))
 
         robot = data["robot_state"]
         robot_traj.append(robot.pos)
@@ -373,7 +417,8 @@ def main(traj_data_pkl: str, map_pkl: str = None, save_path: str = None) -> None
         screen_array = cv2.cvtColor(screen_array, cv2.COLOR_RGB2BGR)
         out.write(screen_array)
 
-        clock.tick(render_fps)
+        if not headless:
+            clock.tick(render_fps)
 
     out.release()
     cv2.destroyAllWindows()
@@ -382,7 +427,7 @@ def main(traj_data_pkl: str, map_pkl: str = None, save_path: str = None) -> None
     pygame.quit()
 
 
-def run_all(dir: str):
+def run_all(dir: str, headless: bool = False):
     # get all pkl file path in the dir recursively without map.pkl
     pkl_files = glob.glob(dir + "/**/*.pkl", recursive=True)
 
@@ -391,7 +436,7 @@ def run_all(dir: str):
 
     for pkl_file in pkl_files:
         print("Processing: ", pkl_file)
-        main(pkl_file)
+        main(pkl_file, headless=headless)
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ class MapHandler:
 
         # get occupancy and sdf map
         self._set_occupancy_map_as_binary()
-        self._sdf_map = self._cmap2d.as_sdf()
+        self._sdf_map = None  # computed lazily in _get_sdf_map()
 
     def load_map_from_occupancy_map(
         self, occupancy_map: np.ndarray, origin: np.ndarray, resolution: float
@@ -58,7 +58,13 @@ class MapHandler:
         self._occupancy_map = self._saturate_occupancy_map(occupancy_map)
         self._cmap2d = CMap2D()
         self._cmap2d.from_array(self._occupancy_map, origin, resolution)
-        self._sdf_map = self._cmap2d.as_sdf()
+        self._sdf_map = None  # computed lazily in _get_sdf_map()
+
+    def _get_sdf_map(self) -> np.ndarray:
+        # SDF is expensive, so compute it only for maps whose distances are actually queried
+        if self._sdf_map is None:
+            self._sdf_map = self._cmap2d.as_sdf()
+        return self._sdf_map
 
     def _saturate_occupancy_map(self, occupancy_map: np.ndarray) -> np.ndarray:
         # saturation
@@ -89,15 +95,12 @@ class MapHandler:
         self._set_occupancy_map_as_binary()
 
         # make map inflation
+        # NOTE: compare in float64 (SDF is float32) to match the original per-cell loop exactly
+        abs_sdf = np.abs(np.asarray(self._get_sdf_map(), dtype=np.float64))
         inflated_map: np.ndarray = self._occupancy_map.copy()
-
-        for i in range(self._occupancy_map.shape[0]):
-            for j in range(self._occupancy_map.shape[1]):
-                if (
-                    abs(self._sdf_map[i, j]) <= inflation_radius
-                    and self._occupancy_map[i, j] == 0
-                ):
-                    inflated_map[i, j] = self.OCC_INFLATION_VAL
+        inflated_map[
+            (abs_sdf <= inflation_radius) & (self._occupancy_map == 0)
+        ] = self.OCC_INFLATION_VAL
 
         new_map = MapHandler()
         new_map.load_map_from_occupancy_map(
@@ -119,7 +122,7 @@ class MapHandler:
         """
         self._cmap2d = cmap2d
         self._set_occupancy_map_as_binary()
-        self._sdf_map = self._cmap2d.as_sdf()
+        self._sdf_map = None  # computed lazily in _get_sdf_map()
 
     def copy(self) -> "MapHandler":
         new_map = MapHandler()
@@ -187,7 +190,7 @@ class MapHandler:
         if map_type == "occupancy":
             return gridshow(self._occupancy_map)
         else:
-            return gridshow(self._sdf_map)
+            return gridshow(self._get_sdf_map())
 
     def get_map_as_np(self, map_type: str) -> np.ndarray:
         """Get map as np.ndarray.
@@ -204,7 +207,7 @@ class MapHandler:
         if map_type == "occupancy":
             return np.array(self._occupancy_map)
         else:
-            return np.array(self._sdf_map)
+            return np.array(self._get_sdf_map())
 
     def get_resolution(self) -> float:
         """Get resolution.
@@ -388,7 +391,7 @@ class MapHandler:
         in_ij_coordinates = self.pose2index(pose)
 
         # get distance to nearest obstacle
-        sdf_dist = self._sdf_map[in_ij_coordinates[0], in_ij_coordinates[1]]
+        sdf_dist = self._get_sdf_map()[in_ij_coordinates[0], in_ij_coordinates[1]]
 
         return sdf_dist
 
@@ -409,7 +412,7 @@ class MapHandler:
         in_ij_coordinates_array = self.pose_array2index_array(pose_array)
 
         # get distance to nearest obstacle
-        sdf_dist_array = self._sdf_map[
+        sdf_dist_array = self._get_sdf_map()[
             in_ij_coordinates_array[:, 0], in_ij_coordinates_array[:, 1]
         ]
 
