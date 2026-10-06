@@ -7,7 +7,6 @@ import os
 import time
 import pickle
 import numpy as np
-import matplotlib.animation as animation
 from matplotlib import pyplot as plt
 from navigation_stack_py.gym_env import NavigationStackEnv, NavigationStackGoalEnv
 from navigation_stack_py.utils import DataLogger
@@ -18,6 +17,7 @@ from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.monitor import Monitor
 from navigation_stack_py.rl_modules.dqn.dqn import DQN
 from utils import HyperParameters
+import pygame_visualizer
 
 from omegaconf import OmegaConf, DictConfig
 import hydra
@@ -42,6 +42,14 @@ def synthesis_image_arrays(
 def run(method_name: str, params: HyperParameters, seed: int):
     print("Running {}...".format(method_name))
     print("Seed: {}".format(seed))
+    # online rendering (matplotlib) is only needed to view the run live or to save paper figures;
+    # the mp4 is rendered offline from the logged data, so headless mode ("none") is enough for it
+    if (params.view_animation or params.save_figure) and params.visualize_mode != "birdeye":
+        raise ValueError(
+            "view_animation and save_figure require run.visualize_mode=birdeye"
+        )
+    if params.save_animation and params.movie_type != "mp4":
+        raise ValueError("Only movie_type=mp4 is supported, use mp4_to_gif.sh for gif")
     set_random_seed(seed)
     env = gym.make(
         params.env_id,
@@ -57,7 +65,6 @@ def run(method_name: str, params: HyperParameters, seed: int):
     env.action_space.seed(seed)
     env = Monitor(env, allow_early_resets=True)
 
-    frames = []
     if method_name == "rl_based_replan":
         model_path = params.saved_model_path
         # check existence of model
@@ -131,22 +138,9 @@ def run(method_name: str, params: HyperParameters, seed: int):
                 plt.imshow(image_arr)
                 plt.pause(0.01)
                 plt.clf()
-        elif params.save_animation:
-            plt.axis("off")
-            frames.append([plt.imshow(image_arr)])
-
-            if method_name == "manual_based_replan":
-                # show animation in real time
-                plt.pause(0.01)
 
         if done:
             break
-
-    if params.save_animation:
-        anim = animation.ArtistAnimation(plt.gcf(), frames, interval=100)
-        movie_name = method_name + "_" + str(seed) + "." + params.movie_type
-        save_path = os.path.join(save_dir, movie_name)
-        anim.save(save_path, fps=10, writer="ffmpeg")
 
     if params.save_figure:
         (
@@ -184,9 +178,20 @@ def run(method_name: str, params: HyperParameters, seed: int):
 
     # save traj data with pickle for visualization
     traj_data_name = method_name + "_data.pkl"
-    f = open(os.path.join(save_dir, traj_data_name), "wb")
+    traj_data_path = os.path.join(save_dir, traj_data_name)
+    f = open(traj_data_path, "wb")
     pickle.dump(traj_data_list, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
+
+    # render the movie offline from the logged data
+    if params.save_animation:
+        movie_name = method_name + "_" + str(seed) + "." + params.movie_type
+        pygame_visualizer.main(
+            traj_data_path,
+            map_pkl=map_poligon_path,
+            save_path=os.path.join(save_dir, movie_name),
+            headless=True,
+        )
 
     print("Average calculation time [s]: {}".format(average_calculation_time))
     print("Max calculation time [s]: {}".format(max_calculation_time))

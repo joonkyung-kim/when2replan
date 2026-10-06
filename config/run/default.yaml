@@ -19,11 +19,11 @@ run:
       # "random_based_replan",
       "no_replan",
     ]
-  save_animation: False
-  save_figure: False
-  view_animation: True
-  visualize_mode: "birdeye" # 'birdeye' or 'observation' or 'train'
-  movie_type: "mp4" # mp4 or gif
+  save_animation: True # render mp4 offline from the logged data after each run (fast, headless)
+  save_figure: False # requires visualize_mode: "birdeye"
+  view_animation: False # live matplotlib view, requires visualize_mode: "birdeye"
+  visualize_mode: "none" # 'none' (headless, fast) or 'birdeye' (online matplotlib rendering, ~5x slower)
+  movie_type: "mp4" # mp4 only, convert with mp4_to_gif.sh for gif
   seeds: [0]
 
 navigation:
