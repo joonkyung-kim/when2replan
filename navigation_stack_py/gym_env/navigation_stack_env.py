@@ -416,6 +416,8 @@ class NavigationStackEnv(gym.Env):
 
                 visualized_data["is_replan"] = rollout_num != 1 and i == 0
 
+                visualized_data["is_collision"] = robot_obs.is_collision
+
                 visualized_data["local_path_list"] = local_planner_output.predict_path_list
 
                 visualized_data["local_path_best_index"] = local_planner_output.best_index

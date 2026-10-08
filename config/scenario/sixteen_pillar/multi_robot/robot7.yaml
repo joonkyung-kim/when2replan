@@ -1,0 +1,23 @@
+# Sixteen pillar, up to eight robots on the border of the map, each goes to the point-symmetric position
+# robot0-3 start at the corners and robot4-7 at the middle of the edges,
+# robot2k <-> robot2k+1 swap positions, so all paths cross at the center
+# This is the scenario of robot7, robot6 is the robot starting at its goal
+# No moving obstacles, the other robots are the only obstacles besides the pillars
+name: "sixteen_pillar_multi_robot_7"
+known_static_map: "maps/sixteen_pillar"
+random_map_mode: True
+min_path_length_ratio: 0.0 # [-] start and goal are fixed, so do not reject short paths (otherwise reset may loop forever)
+start_pose_type: "specified" # "candidates" or "specified" or "random"
+start_pose:
+  x: 24.0
+  y: 12.5
+  yaw: 3.141 # facing the goal
+goal_pose_type: "specified" # "candidates" or "specified" or "random"
+goal_pose:
+  x: 1.0
+  y: 12.5
+  yaw: 3.141
+
+moving_obstacles:
+  type: "all" # "candidates" or "all" or "random"
+  candidates: []

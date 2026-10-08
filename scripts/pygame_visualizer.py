@@ -4,8 +4,9 @@ import numpy as np
 import pygame
 import os
 import pickle
-import cv2
+import subprocess
 import glob
+from collections import defaultdict
 from decimal import Decimal, ROUND_HALF_UP
 
 import numpy as np
@@ -56,6 +57,244 @@ def render_static_map(
     return layer
 
 
+def draw_robot(
+    canvas: pygame.Surface,
+    robot: AgentState,
+    color: List[int],
+    robot_radius: float,
+    line_width: int,
+    scale: float,
+    center: tuple,
+) -> None:
+    """
+    Draw robot body and wheels
+    """
+    # body
+    pygame.draw.circle(
+        surface=canvas,
+        color=color,
+        center=(
+            rhu(robot.pos[0] * scale + center[0]),
+            rhu(robot.pos[1] * scale + center[1]),
+        ),
+        radius=robot_radius * scale,
+        width=line_width,
+    )
+
+    # heading line
+    # start_pos = robot.pos
+    # end_pos = robot.pos + robot_radius * np.array(
+    #     [np.cos(robot.yaw), np.sin(robot.yaw)]
+    # )
+    # pygame.draw.line(
+    #     surface=canvas,
+    #     color=color,
+    #     start_pos=(
+    #         rhu(start_pos[0] * scale + center[0]),
+    #         rhu(start_pos[1] * scale + center[1]),
+    #     ),
+    #     end_pos=(
+    #         rhu(end_pos[0] * scale + center[0]),
+    #         rhu(end_pos[1] * scale + center[1]),
+    #     ),
+    #     width=line_width,
+    # )
+
+    # wheels
+    wheel_length = robot_radius * 0.4
+    wheel_width = robot_radius * 0.2
+    # left wheel
+    lw_center = robot.pos + (robot_radius - wheel_width / 2.0) * np.array(
+        [-np.sin(robot.yaw), np.cos(robot.yaw)]
+    )
+    # polygon points
+    left_wheel = [
+        lw_center
+        + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        + wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
+        lw_center
+        + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        - wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
+        lw_center
+        - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        - wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
+        lw_center
+        - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        + wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
+    ]
+
+    pygame.draw.polygon(
+        surface=canvas,
+        color=color,
+        points=[node * scale + center for node in left_wheel],
+        width=0,
+    )
+
+    # right wheel
+    rw_center = robot.pos + (robot_radius - wheel_width / 2.0) * np.array(
+        [np.sin(robot.yaw), -np.cos(robot.yaw)]
+    )
+    right_wheel = [
+        rw_center
+        + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        + wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
+        rw_center
+        + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        - wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
+        rw_center
+        - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        - wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
+        rw_center
+        - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
+        + wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
+    ]
+
+    pygame.draw.polygon(
+        surface=canvas,
+        color=color,
+        points=[node * scale + center for node in right_wheel],
+        width=0,
+    )
+
+
+def draw_goal(
+    canvas: pygame.Surface,
+    goal: np.ndarray,
+    color: List[int],
+    goal_radius: float,
+    scale: float,
+    center: tuple,
+) -> None:
+    """
+    Draw goal circle
+    """
+    pygame.draw.circle(
+        surface=canvas,
+        color=color,
+        center=(
+            rhu(goal[0] * scale + center[0]),
+            rhu(goal[1] * scale + center[1]),
+        ),
+        radius=goal_radius / 2.0 * scale,
+        width=2,
+    )
+
+
+def draw_trajectory(
+    canvas: pygame.Surface,
+    robot_traj: List[np.ndarray],
+    replan_history: List[bool],
+    color: List[int],
+    replan_color: List[int],
+    scale: float,
+    center: tuple,
+) -> None:
+    """
+    Draw robot trajectory, positions where the global path was replanned are drawn larger with replan_color
+    """
+    if robot_traj != [] and len(robot_traj) > 2:
+        for i, pos in enumerate(robot_traj):
+            if replan_history[i]:
+                point_color = replan_color
+                size = 0.2
+            else:
+                point_color = color
+                size = 0.1
+            pygame.draw.circle(
+                surface=canvas,
+                color=point_color,
+                center=(
+                    rhu(pos[0] * scale + center[0]),
+                    rhu(pos[1] * scale + center[1]),
+                ),
+                radius=size * scale,
+                width=0,
+            )
+
+
+def draw_replan_marker(
+    canvas: pygame.Surface,
+    robot: AgentState,
+    color: List[int],
+    robot_radius: float,
+    line_width: int,
+    scale: float,
+    center: tuple,
+) -> None:
+    """
+    Draw circle around the robot when the global path is replanned
+    """
+    pygame.draw.circle(
+        surface=canvas,
+        color=color,
+        center=(
+            rhu(robot.pos[0] * scale + center[0]),
+            rhu(robot.pos[1] * scale + center[1]),
+        ),
+        radius=(robot_radius) * scale,
+        width=line_width,
+    )
+
+
+def draw_paths(
+    canvas: pygame.Surface,
+    reference_path: np.ndarray,
+    local_paths: List[np.ndarray],
+    best_index: int,
+    reference_path_color: List[int],
+    local_path_color: List[int],
+    best_path_color: List[int],
+    scale: float,
+    center: tuple,
+) -> None:
+    """
+    Draw reference path (global path), all local path candidates, and the best local path
+    """
+    # reference path
+    if reference_path is not None:
+        for pos in reference_path:
+            pygame.draw.circle(
+                surface=canvas,
+                color=reference_path_color,
+                center=(
+                    rhu(pos[0] * scale + center[0]),
+                    rhu(pos[1] * scale + center[1]),
+                ),
+                radius=0.05 * scale,
+                width=0,
+            )
+
+    # all paths
+    if local_paths is not None:
+        for path in local_paths:
+            pygame.draw.lines(
+                surface=canvas,
+                color=local_path_color,
+                points=[
+                    (
+                        rhu(pos[0] * scale + center[0]),
+                        rhu(pos[1] * scale + center[1]),
+                    )
+                    for pos in path
+                ],
+                closed=False,
+                width=rhu(0.03 * scale),
+            )
+
+        # best local path
+        best_path = local_paths[best_index]
+        pygame.draw.lines(
+            surface=canvas,
+            color=best_path_color,
+            points=[
+                (rhu(pos[0] * scale + center[0]), rhu(pos[1] * scale + center[1]))
+                for pos in best_path
+            ],
+            closed=False,
+            width=rhu(0.05 * scale),
+        )
+
+
 def main(
     traj_data_pkl: str, map_pkl: str = None, save_path: str = None, headless: bool = False
 ) -> None:
@@ -84,7 +323,8 @@ def main(
     black = [20, 20, 40]
     lightblue = [0, 120, 255]
     darkblue = [0, 40, 160]
-    red = [255, 0, 0]
+    red = [255, 0, 0]  # robot in collision
+    amber = [255, 190, 0]  # replan marker around robot
     # orange = [255, 100, 0]
     white = [255, 255, 255]
     # blue = [0, 0, 255]
@@ -92,9 +332,22 @@ def main(
 
     # tableu colors
     green = [44, 150, 44]
+    lightgreen = [152, 223, 138]
+    darkgreen = [20, 90, 20]
     orange = [255, 127, 14]
     olive = [188, 189, 34]
     blue = [31, 119, 180]
+    # other robots in multi robot run (robot, local path candidates, best local path), indexed by robot id
+    other_robot_colors = [
+        ([148, 103, 189], [197, 176, 213], [90, 50, 130]),  # purple
+        ([140, 86, 75], [196, 156, 148], [85, 50, 40]),  # brown
+        ([227, 119, 194], [247, 182, 210], [160, 50, 130]),  # pink
+        ([23, 190, 207], [158, 218, 229], [10, 115, 130]),  # cyan
+        ([40, 40, 140], [160, 160, 220], [20, 20, 80]),  # navy
+        ([0, 128, 110], [130, 200, 190], [0, 75, 65]),  # teal
+        ([110, 110, 110], [190, 190, 190], [55, 55, 55]),  # grey
+        ([140, 20, 80], [215, 150, 180], [80, 10, 45]),  # wine
+    ]
 
     # get directory path of traj_data_pkl
     dir = os.path.dirname(traj_data_pkl)
@@ -106,9 +359,17 @@ def main(
     if save_path is None:
         save_path = os.path.join(dir, name.replace(".pkl", ".mp4"))
 
-    # Prepare video writer
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out = cv2.VideoWriter(save_path, fourcc, render_fps, (window_width, window_height))
+    # Prepare video writer: pipe raw frames to ffmpeg to encode H.264 (opencv-python has no H.264 encoder)
+    out = subprocess.Popen(
+        [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "rawvideo", "-pix_fmt", "rgb24",
+            "-s", "{}x{}".format(window_width, window_height),
+            "-r", str(render_fps), "-i", "-",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", save_path,
+        ],
+        stdin=subprocess.PIPE,
+    )
 
     with open(traj_data_pkl, "rb") as f:
         # load data
@@ -133,6 +394,9 @@ def main(
 
     robot_traj = []
     replan_history = []
+    # trajectories of the other robots (multi robot run), indexed by the order in data["other_robots"]
+    other_robot_trajs = defaultdict(list)
+    other_replan_histories = defaultdict(list)
 
     length = len(traj_data)
     for i in range(length):
@@ -178,17 +442,10 @@ def main(
                 )
 
         # goal
-        goal = data["goal"]
-        pygame.draw.circle(
-            surface=canvas,
-            color=red,
-            center=(
-                rhu(goal[0] * scale + center[0]),
-                rhu(goal[1] * scale + center[1]),
-            ),
-            radius=goal_radius / 2.0 * scale,
-            width=2,
-        )
+        draw_goal(canvas, data["goal"], green, goal_radius, scale, center)
+        for j, other_robot in enumerate(data.get("other_robots", [])):
+            robot_color = other_robot_colors[other_robot.get("robot_id", j)][0]
+            draw_goal(canvas, other_robot["goal"], robot_color, goal_radius, scale, center)
 
         # draw map
         canvas.blit(map_layer, (0, 0))
@@ -200,127 +457,16 @@ def main(
         else:
             replan_history.append(False)
 
-        if robot_traj != [] and len(robot_traj) > 2:
-            # draw robot trajectory
-            
-            for i, pos in enumerate(robot_traj):
-                if replan_history[i]:
-                    color = red
-                    size = 0.2
-                else:
-                    color = lightblue
-                    size = 0.1
-                pygame.draw.circle(
-                    surface=canvas,
-                    color=color,
-                    center=(
-                        rhu(pos[0] * scale + center[0]),
-                        rhu(pos[1] * scale + center[1]),
-                    ),
-                    radius= size * scale,
-                    width=0,
-                )
+        # draw robot trajectory
+        draw_trajectory(canvas, robot_traj, replan_history, lightblue, green, scale, center)
 
-        # draw robot
-        # body
-        pygame.draw.circle(
-            surface=canvas,
-            color=green,
-            center=(
-                rhu(robot.pos[0] * scale + center[0]),
-                rhu(robot.pos[1] * scale + center[1]),
-            ),
-            radius=robot_radius * scale,
-            width=line_width,
-        )
+        # draw robot, red if in collision
+        ego_color = red if data.get("is_collision", False) else green
+        draw_robot(canvas, robot, ego_color, robot_radius, line_width, scale, center)
 
-        # heading line
-        # start_pos = robot.pos
-        # end_pos = robot.pos + robot_radius * np.array(
-        #     [np.cos(robot.yaw), np.sin(robot.yaw)]
-        # )
-        # pygame.draw.line(
-        #     surface=canvas,
-        #     color=green,
-        #     start_pos=(
-        #         rhu(start_pos[0] * scale + center[0]),
-        #         rhu(start_pos[1] * scale + center[1]),
-        #     ),
-        #     end_pos=(
-        #         rhu(end_pos[0] * scale + center[0]),
-        #         rhu(end_pos[1] * scale + center[1]),
-        #     ),
-        #     width=line_width,
-        # )
-
-        # wheels
-        wheel_length = robot_radius * 0.4
-        wheel_width = robot_radius * 0.2
-        # left wheel
-        lw_center = robot.pos + (robot_radius - wheel_width / 2.0) * np.array(
-            [-np.sin(robot.yaw), np.cos(robot.yaw)]
-        )
-        # polygon points
-        left_wheel = [
-            lw_center
-            + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            + wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
-            lw_center
-            + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            - wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
-            lw_center
-            - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            - wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
-            lw_center
-            - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            + wheel_width * np.array([-np.sin(robot.yaw), np.cos(robot.yaw)]),
-        ]
-
-        pygame.draw.polygon(
-            surface=canvas,
-            color=green,
-            points=[node * scale + center for node in left_wheel],
-            width=0,
-        )
-
-        # right wheel
-        rw_center = robot.pos + (robot_radius - wheel_width / 2.0) * np.array(
-            [np.sin(robot.yaw), -np.cos(robot.yaw)]
-        )
-        right_wheel = [
-            rw_center
-            + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            + wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
-            rw_center
-            + wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            - wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
-            rw_center
-            - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            - wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
-            rw_center
-            - wheel_length * np.array([np.cos(robot.yaw), np.sin(robot.yaw)])
-            + wheel_width * np.array([np.sin(robot.yaw), -np.cos(robot.yaw)]),
-        ]
-
-        pygame.draw.polygon(
-            surface=canvas,
-            color=green,
-            points=[node * scale + center for node in right_wheel],
-            width=0,
-        )
-
-        # if replan, draw red circle
+        # if replan, draw amber circle
         if data["is_replan"]:
-            pygame.draw.circle(
-                surface=canvas,
-                color=red,
-                center=(
-                    rhu(robot.pos[0] * scale + center[0]),
-                    rhu(robot.pos[1] * scale + center[1]),
-                ),
-                radius=(robot_radius) * scale,
-                width=line_width,
-            )
+            draw_replan_marker(canvas, robot, amber, robot_radius, line_width, scale, center)
 
         # draw obstacles
         for obstacle in data["obstacles"]:
@@ -340,6 +486,53 @@ def main(
                 # width=line_width,
             )
 
+        # draw other robots in the same way as the robot (multi robot run)
+        for j, other_robot in enumerate(data.get("other_robots", [])):
+            robot_color, local_path_color, best_path_color = other_robot_colors[
+                other_robot.get("robot_id", j)
+            ]
+            other_robot_trajs[j].append(other_robot["robot_state"].pos)
+            other_replan_histories[j].append(other_robot["is_replan"])
+            draw_trajectory(
+                canvas,
+                other_robot_trajs[j],
+                other_replan_histories[j],
+                robot_color,
+                robot_color,
+                scale,
+                center,
+            )
+            draw_paths(
+                canvas,
+                other_robot["global_path"],
+                other_robot["local_path_list"],
+                other_robot["local_path_best_index"],
+                robot_color,
+                local_path_color,
+                best_path_color,
+                scale,
+                center,
+            )
+            draw_robot(
+                canvas,
+                other_robot["robot_state"],
+                red if other_robot.get("is_collision", False) else robot_color,
+                robot_radius,
+                line_width,
+                scale,
+                center,
+            )
+            if other_robot["is_replan"]:
+                draw_replan_marker(
+                    canvas,
+                    other_robot["robot_state"],
+                    amber,
+                    robot_radius,
+                    line_width,
+                    scale,
+                    center,
+                )
+
         # scan points
         for point in scan:
             pygame.draw.circle(
@@ -353,53 +546,18 @@ def main(
                 width=0,
             )
 
-        # reference path
-        reference_path = data["global_path"]
-        for pos in reference_path:
-            pygame.draw.circle(
-                surface=canvas,
-                color=red,
-                center=(
-                    rhu(pos[0] * scale + center[0]),
-                    rhu(pos[1] * scale + center[1]),
-                ),
-                radius=0.05 * scale,
-                width=0,
-            )
-
-        # local paths
-        local_paths = data["local_path_list"]
-        best_index = data["local_path_best_index"]
-
-        # all paths
-        if local_paths is not None:
-            for path in local_paths:
-                pygame.draw.lines(
-                    surface=canvas,
-                    color=lightblue,
-                    points=[
-                        (
-                            rhu(pos[0] * scale + center[0]),
-                            rhu(pos[1] * scale + center[1]),
-                        )
-                        for pos in path
-                    ],
-                    closed=False,
-                    width=rhu(0.03 * scale),
-                )
-
-            # best local path
-            best_path = local_paths[best_index]
-            pygame.draw.lines(
-                surface=canvas,
-                color=orange,
-                points=[
-                    (rhu(pos[0] * scale + center[0]), rhu(pos[1] * scale + center[1]))
-                    for pos in best_path
-                ],
-                closed=False,
-                width=rhu(0.05 * scale),
-            )
+        # reference path and local paths
+        draw_paths(
+            canvas,
+            data["global_path"],
+            data["local_path_list"],
+            data["local_path_best_index"],
+            green,
+            lightgreen,
+            darkgreen,
+            scale,
+            center,
+        )
 
         window.blit(canvas, (0, 0))
 
@@ -414,14 +572,14 @@ def main(
         # save image
         screen_array = pygame.surfarray.array3d(window)
         screen_array = screen_array.transpose([1, 0, 2])
-        screen_array = cv2.cvtColor(screen_array, cv2.COLOR_RGB2BGR)
-        out.write(screen_array)
+        out.stdin.write(np.ascontiguousarray(screen_array).tobytes())
 
         if not headless:
             clock.tick(render_fps)
 
-    out.release()
-    cv2.destroyAllWindows()
+    out.stdin.close()
+    if out.wait() != 0:
+        raise RuntimeError("ffmpeg failed to encode the video: {}".format(save_path))
 
     pygame.display.quit()
     pygame.quit()
