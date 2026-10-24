@@ -344,8 +344,8 @@ def run(method_name: str, params: HyperParameters, seed: int):
     set_random_seed(seed)
     exchanger = RobotStateExchanger(num_robots, seed)
 
-    # log files are organized as <seed>/csv, <seed>/pkl, and <seed>/video
-    save_dir = os.path.join(params.log_dir, str(seed))
+    # log files are organized as <seed>/<method>/csv, <seed>/<method>/pkl, and <seed>/<method>/video
+    save_dir = os.path.join(params.log_dir, str(seed), method_name)
     csv_dir = os.path.join(save_dir, "csv")
     pkl_dir = os.path.join(save_dir, "pkl")
     video_dir = os.path.join(save_dir, "video")
