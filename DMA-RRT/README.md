@@ -40,5 +40,6 @@ comparison between the paper's CL-RRT and ours.
 
 ## Files not in git
 
-The paper's PDF, generated videos, and figures in this folder are ignored by [.gitignore](.gitignore). Get the
-paper from the DOI above. The videos can be generated again with the commands in the implementation README.
+The paper's PDF (`paper/`) and the generated videos and figures (`implementation/outputs/`) are ignored by
+[.gitignore](.gitignore). Get the paper from the DOI above. The videos can be generated again with the commands in the
+implementation README.

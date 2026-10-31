@@ -2,7 +2,7 @@
     Compare a robot that knows the time-parameterized obstacles with one that ignores them
 
     Run from DMA-RRT/implementation:
-    python3 compare_moving_obstacles.py
+    python3 -m experiments.compare_moving_obstacles
 """
 
 from __future__ import annotations
@@ -10,11 +10,11 @@ from __future__ import annotations
 import argparse
 import numpy as np
 
-from cl_rrt import CLRRT
-from collision import CollisionChecker
-from dynamics import PurePursuit, SkidSteerModel
-from execution import CLRRTExecutor
-from scenarios import ROBOT_RADIUS, corridor_obstacles
+from dma_rrt.cl_rrt import CLRRT
+from dma_rrt.collision import CollisionChecker
+from dma_rrt.dynamics import PurePursuit, SkidSteerModel
+from dma_rrt.execution import CLRRTExecutor
+from dma_rrt.scenarios import ROBOT_RADIUS, corridor_obstacles
 
 
 def main() -> None:
@@ -63,8 +63,11 @@ def main() -> None:
             num_overlaps += run_min_dist < ROBOT_RADIUS
             if executor.is_in_goal():
                 times.append(executor.time)
+        # no run may reach the goal with few seeds or a short time limit
+        median_time = f"{np.median(times):.1f} s" if times else "-"
+        percentile_time = f"{np.percentile(times, 95):.1f} s" if times else "-"
         print(
-            f"| {name} | {len(times)}/{args.seeds} | {np.median(times):.1f} s | {np.percentile(times, 95):.1f} s "
+            f"| {name} | {len(times)}/{args.seeds} | {median_time} | {percentile_time} "
             f"| {num_overlaps} | {min_dist:.3f} m | {num_lazy} | {num_stops} |",
             flush=True,
         )

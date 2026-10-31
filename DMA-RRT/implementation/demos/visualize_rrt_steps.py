@@ -5,7 +5,7 @@
     and the last iteration, which reaches the goal, are slow again.
 
     Run from DMA-RRT/implementation:
-    python3 visualize_rrt_steps.py --video rrt_steps.mp4
+    python3 -m demos.visualize_rrt_steps --video outputs/rrt_steps.mp4
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-from collision import CollisionChecker, SIXTEEN_PILLAR_MAP
-from rrt import RRT, RRTStep
+from dma_rrt.collision import CollisionChecker, SIXTEEN_PILLAR_MAP
+from dma_rrt.rrt import RRT, RRTStep
 
 SAMPLE_COLOR = "tab:orange"
 NEAREST_COLOR = "tab:purple"
@@ -303,7 +303,7 @@ class StepVisualizer:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--video", type=str, default="rrt_steps.mp4")
+    parser.add_argument("--video", type=str, default="outputs/rrt_steps.mp4")
     parser.add_argument("--map", type=str, default=SIXTEEN_PILLAR_MAP, help="map yaml file, relative to the repo root")
     parser.add_argument("--start", type=float, nargs=2, default=[1.0, 1.0])
     parser.add_argument("--goal", type=float, nargs=2, default=[24.0, 24.0])

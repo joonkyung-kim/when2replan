@@ -2,10 +2,10 @@
     Grow an RRT on a map and draw the tree
 
     Run from DMA-RRT/implementation:
-    python3 demo_rrt.py
-    python3 demo_rrt.py --seed 1 --use_all_samples --save rrt.png
-    python3 demo_rrt.py --video rrt.mp4
-    python3 demo_rrt.py --map maps/white/white/map.yaml  # without obstacles
+    python3 -m demos.demo_rrt
+    python3 -m demos.demo_rrt --seed 1 --use_all_samples --save outputs/rrt.png
+    python3 -m demos.demo_rrt --video outputs/rrt.mp4
+    python3 -m demos.demo_rrt --map maps/white/white/map.yaml  # without obstacles
 """
 
 from __future__ import annotations
@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Patch
 
-from collision import CollisionChecker, SIXTEEN_PILLAR_MAP
-from rrt import RRT
-from tree import Tree
+from dma_rrt.collision import CollisionChecker, SIXTEEN_PILLAR_MAP
+from dma_rrt.rrt import RRT
+from dma_rrt.tree import Tree
 
 
 def get_edges(tree: Tree) -> List[np.ndarray]:

@@ -17,41 +17,51 @@ cd DMA-RRT/implementation   # all scripts run from this folder
 
 ## Files
 
+```
+implementation/
+├── dma_rrt/       the algorithms
+├── demos/         figures and videos
+├── experiments/   comparison tables
+└── outputs/       generated videos and figures, not in git
+```
+
+Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, so that they can import `dma_rrt`.
+
 | File | Content |
 |---|---|
-| `tree.py` | `Node` and `Tree`: nearest and k-nearest search, path extraction |
-| `collision.py` | `CollisionChecker`: distance to obstacles through `MapHandler`, edge and trajectory checks |
-| `rrt.py` | Basic RRT (steps 0-1) |
-| `dynamics.py` | Skid-steer model (eq. 11) and pure pursuit (eq. 12) |
-| `cl_rrt.py` | `CLRRT`: our CL-RRT tree expansion (step 2), used by the next steps |
-| `cl_rrt_paper.py` | `PaperCLRRT`: Algorithm 1 of the paper as written, kept as a baseline |
-| `execution.py` | `CLRRTExecutor`: execution loop with the lazy check (step 3) |
-| `compare_cl_rrt.py` | Comparison of the two CL-RRT versions for one planning call |
-| `compare_execution.py` | Comparison of the two CL-RRT versions in the execution loop |
-| `scenarios.py` | Robots with fixed plans driving through the corridors of the sixteen pillar map (step 4) |
-| `compare_moving_obstacles.py` | Comparison of a robot that knows the moving obstacles with one that ignores them |
-| `demo_rrt.py` | Basic RRT: figure and tree growth video |
-| `visualize_rrt_steps.py` | Basic RRT: video explaining each step of one iteration |
-| `demo_cl_rrt.py` | CL-RRT: figure and video with the simulated robot (`--paper` for the paper's version) |
-| `demo_execution.py` | Execution loop: the robot moves, and an obstacle appears on its plan |
+| `dma_rrt/tree.py` | `Node` and `Tree`: nearest and k-nearest search, path extraction |
+| `dma_rrt/collision.py` | `CollisionChecker`: distance to obstacles through `MapHandler`, edge and trajectory checks |
+| `dma_rrt/rrt.py` | Basic RRT (steps 0-1) |
+| `dma_rrt/dynamics.py` | Skid-steer model (eq. 11) and pure pursuit (eq. 12) |
+| `dma_rrt/cl_rrt.py` | `CLRRT`: our CL-RRT tree expansion (step 2), used by the next steps |
+| `dma_rrt/cl_rrt_paper.py` | `PaperCLRRT`: Algorithm 1 of the paper as written, kept as a baseline |
+| `dma_rrt/execution.py` | `CLRRTExecutor`: execution loop with the lazy check (step 3) |
+| `dma_rrt/scenarios.py` | Robots with fixed plans driving through the corridors of the sixteen pillar map (step 4) |
+| `demos/demo_rrt.py` | Basic RRT: figure and tree growth video |
+| `demos/visualize_rrt_steps.py` | Basic RRT: video explaining each step of one iteration |
+| `demos/demo_cl_rrt.py` | CL-RRT: figure and video with the simulated robot (`--paper` for the paper's version) |
+| `demos/demo_execution.py` | Execution loop: the robot moves, and an obstacle appears on its plan |
+| `experiments/compare_cl_rrt.py` | Comparison of the two CL-RRT versions for one planning call |
+| `experiments/compare_execution.py` | Comparison of the two CL-RRT versions in the execution loop |
+| `experiments/compare_moving_obstacles.py` | Comparison of a robot that knows the moving obstacles with one that ignores them |
 
 ## Running
 
 ```bash
-python3 demo_rrt.py --save rrt.png
-python3 demo_rrt.py --map maps/white/white/map.yaml --start 2 2 --goal 18 18 --save rrt_empty.png   # no obstacles
-python3 visualize_rrt_steps.py --video rrt_steps.mp4
+python3 -m demos.demo_rrt --save outputs/rrt.png
+python3 -m demos.demo_rrt --map maps/white/white/map.yaml --start 2 2 --goal 18 18 --save outputs/rrt_empty.png   # no obstacles
+python3 -m demos.visualize_rrt_steps --video outputs/rrt_steps.mp4
 
-python3 demo_cl_rrt.py --video cl_rrt.mp4
-python3 demo_cl_rrt.py --paper --video cl_rrt_paper.mp4
+python3 -m demos.demo_cl_rrt --video outputs/cl_rrt.mp4
+python3 -m demos.demo_cl_rrt --paper --video outputs/cl_rrt_paper.mp4
 
-python3 demo_execution.py --video execution.mp4
-python3 demo_execution.py --no_obstacle --save execution.png
-python3 demo_execution.py --moving --no_obstacle --video moving.mp4
+python3 -m demos.demo_execution --video outputs/execution.mp4
+python3 -m demos.demo_execution --no_obstacle --save outputs/execution.png
+python3 -m demos.demo_execution --moving --no_obstacle --video outputs/moving.mp4
 
-python3 compare_cl_rrt.py     # takes a few minutes
-python3 compare_execution.py  # takes longer, because robots that get stuck run until the time limit
-python3 compare_moving_obstacles.py
+python3 -m experiments.compare_cl_rrt     # takes a few minutes
+python3 -m experiments.compare_execution  # takes longer, because robots that get stuck run until the time limit
+python3 -m experiments.compare_moving_obstacles
 ```
 
 Without `--save` or `--video`, the demos open a matplotlib window.

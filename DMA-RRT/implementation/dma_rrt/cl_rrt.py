@@ -11,9 +11,9 @@ from __future__ import annotations
 from typing import List, NamedTuple, Optional
 import numpy as np
 
-from collision import CollisionChecker
-from dynamics import PurePursuit
-from tree import Node, Tree
+from dma_rrt.collision import CollisionChecker
+from dma_rrt.dynamics import PurePursuit
+from dma_rrt.tree import Node, Tree
 
 
 class CLRRTAttempt(NamedTuple):

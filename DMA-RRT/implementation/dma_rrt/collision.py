@@ -11,7 +11,7 @@ from matplotlib.colors import ListedColormap
 
 from navigation_stack_py.utils import MapHandler
 
-REPO_DIR = Path(__file__).resolve().parents[2]
+REPO_DIR = Path(__file__).resolve().parents[3]
 SIXTEEN_PILLAR_MAP = "maps/sixteen_pillar/sixteen_pillar/map.yaml"
 
 

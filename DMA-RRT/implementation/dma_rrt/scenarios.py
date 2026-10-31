@@ -7,9 +7,9 @@ from __future__ import annotations
 from typing import List
 import numpy as np
 
-from cl_rrt import CLRRT
-from collision import CollisionChecker, MovingObstacle
-from dynamics import PurePursuit
+from dma_rrt.cl_rrt import CLRRT
+from dma_rrt.collision import CollisionChecker, MovingObstacle
+from dma_rrt.dynamics import PurePursuit
 
 ROBOT_RADIUS = 1.0
 

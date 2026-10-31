@@ -2,7 +2,7 @@
     Compare CL-RRT as written in the paper (PaperCLRRT) with our version (CLRRT) and the effect of each difference
 
     Run from DMA-RRT/implementation:
-    python3 compare_cl_rrt.py
+    python3 -m experiments.compare_cl_rrt
 """
 
 from __future__ import annotations
@@ -11,10 +11,10 @@ import argparse
 import time
 import numpy as np
 
-from cl_rrt import CLRRT
-from cl_rrt_paper import PaperCLRRT
-from collision import CollisionChecker
-from dynamics import PurePursuit, SkidSteerModel
+from dma_rrt.cl_rrt import CLRRT
+from dma_rrt.cl_rrt_paper import PaperCLRRT
+from dma_rrt.collision import CollisionChecker
+from dma_rrt.dynamics import PurePursuit, SkidSteerModel
 
 
 def main() -> None:

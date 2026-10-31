@@ -5,10 +5,10 @@
     This obstacle is not in the paper, use --no_obstacle for the paper's static environment.
 
     Run from DMA-RRT/implementation:
-    python3 demo_execution.py --video execution.mp4
-    python3 demo_execution.py --no_obstacle --save execution.png
-    python3 demo_execution.py --paper --video execution_paper.mp4  # Algorithm 1 of the paper as written
-    python3 demo_execution.py --moving --no_obstacle --video moving.mp4  # robots with fixed plans in the corridors
+    python3 -m demos.demo_execution --video outputs/execution.mp4
+    python3 -m demos.demo_execution --no_obstacle --save outputs/execution.png
+    python3 -m demos.demo_execution --paper --video outputs/execution_paper.mp4  # Algorithm 1 of the paper as written
+    python3 -m demos.demo_execution --moving --no_obstacle --video outputs/moving.mp4  # robots with fixed plans in the corridors
 """
 
 from __future__ import annotations
@@ -19,12 +19,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
-from cl_rrt import CLRRT
-from cl_rrt_paper import PaperCLRRT
-from collision import CollisionChecker, SIXTEEN_PILLAR_MAP
-from dynamics import PurePursuit, SkidSteerModel
-from execution import CLRRTExecutor, CycleResult
-from scenarios import corridor_obstacles
+from dma_rrt.cl_rrt import CLRRT
+from dma_rrt.cl_rrt_paper import PaperCLRRT
+from dma_rrt.collision import CollisionChecker, SIXTEEN_PILLAR_MAP
+from dma_rrt.dynamics import PurePursuit, SkidSteerModel
+from dma_rrt.execution import CLRRTExecutor, CycleResult
+from dma_rrt.scenarios import corridor_obstacles
 
 TRAIL_COLOR = "tab:red"
 COMMITTED_COLOR = "black"

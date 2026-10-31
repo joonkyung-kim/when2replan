@@ -5,7 +5,7 @@
     and keeps growing the tree, which is how the paper uses CL-RRT.
 
     Run from DMA-RRT/implementation:
-    python3 compare_execution.py
+    python3 -m experiments.compare_execution
 """
 
 from __future__ import annotations
@@ -13,11 +13,11 @@ from __future__ import annotations
 import argparse
 import numpy as np
 
-from cl_rrt import CLRRT
-from cl_rrt_paper import PaperCLRRT
-from collision import CollisionChecker
-from dynamics import PurePursuit, SkidSteerModel
-from execution import CLRRTExecutor
+from dma_rrt.cl_rrt import CLRRT
+from dma_rrt.cl_rrt_paper import PaperCLRRT
+from dma_rrt.collision import CollisionChecker
+from dma_rrt.dynamics import PurePursuit, SkidSteerModel
+from dma_rrt.execution import CLRRTExecutor
 
 
 def main() -> None:
@@ -71,8 +71,11 @@ def main() -> None:
             num_turn_runs += has_turned
             if executor.is_in_goal():
                 times.append(executor.time)
+        # no run may reach the goal with few seeds or a short time limit
+        median_time = f"{np.median(times):.1f} s" if times else "-"
+        percentile_time = f"{np.percentile(times, 95):.1f} s" if times else "-"
         print(
-            f"| {name} | {len(times)}/{args.seeds} | {np.median(times):.1f} s | {np.percentile(times, 95):.1f} s "
+            f"| {name} | {len(times)}/{args.seeds} | {median_time} | {percentile_time} "
             f"| {num_turn_runs} | {num_lazy} | {num_stops} | {min_clearance:.3f} m |",
             flush=True,
         )
