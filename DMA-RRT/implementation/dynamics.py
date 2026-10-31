@@ -73,7 +73,7 @@ class PurePursuit:
         to_target = target_pos - state[:2]
         eta = wrap_angle(np.arctan2(to_target[1], to_target[0]) - state[2])
         # sin(eta) goes back to 0 behind the robot, so turn at the limit there instead of going straight
-        eta = np.clip(eta, -0.5 * np.pi, 0.5 * np.pi)
+        eta = max(min(eta, 0.5 * np.pi), -0.5 * np.pi)
         delta_v = (
             self.speed
             * self.model.wheel_base
@@ -95,7 +95,7 @@ class PurePursuit:
         progress = np.dot(position - from_pos, direction)
         cross_track = np.linalg.norm(position - (from_pos + progress * direction))
         ahead = np.sqrt(max(self.lookahead**2 - cross_track**2, 0.0))
-        target_progress = np.clip(progress + ahead, 0.0, length)
+        target_progress = max(min(progress + ahead, length), 0.0)
         return from_pos + target_progress * direction, progress >= length
 
     def max_segment_steps(self, from_pos: np.ndarray, to_pos: np.ndarray) -> int:

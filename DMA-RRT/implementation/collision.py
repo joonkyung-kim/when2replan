@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 import numpy as np
 from matplotlib.colors import ListedColormap
 
@@ -34,19 +34,29 @@ class CollisionChecker:
         self.safe_dist = robot_radius + inflation_radius
         self.check_interval = self._map.get_resolution()
         self.area_limits = self._map.get_area_limits()
+        self.circles: List[Tuple[np.ndarray, float]] = []  # obstacles not in the map: (center, radius)
+
+    def add_circle(self, center: np.ndarray, radius: float) -> None:
+        """
+        Add a circular obstacle that is not in the map
+        """
+        self.circles.append((np.asarray(center, dtype=float), radius))
 
     def obstacle_dist(self, pos: np.ndarray) -> float:
         """
-        Distance from pos to the nearest obstacle, 0 inside an obstacle
+        Distance from pos to the nearest obstacle, 0 or less inside an obstacle
         NOTE: MapHandler clips a position out of the map to the map border
         """
-        return float(self._map.get_obs_dist(np.asarray(pos, dtype=float)))
+        return float(self.obstacle_dists(np.asarray(pos, dtype=float)[np.newaxis])[0])
 
     def obstacle_dists(self, points: np.ndarray) -> np.ndarray:
         """
         Distances from points size: (N, 2) to the nearest obstacle
         """
-        return self._map.get_obs_dist_array(points)
+        dists = self._map.get_obs_dist_array(points)
+        for center, radius in self.circles:
+            dists = np.minimum(dists, np.linalg.norm(points - center, axis=1) - radius)
+        return dists
 
     def is_free(self, pos: np.ndarray) -> bool:
         return self.obstacle_dist(pos) >= self.safe_dist
@@ -85,7 +95,7 @@ class CollisionChecker:
             | (points[:, 1] < y_min)
             | (points[:, 1] > y_max)
         )
-        is_unsafe = is_out | (self._map.get_obs_dist_array(points) < self.safe_dist)
+        is_unsafe = is_out | (self.obstacle_dists(points) < self.safe_dist)
         unsafe_indices = np.flatnonzero(is_unsafe)
         if len(unsafe_indices) == 0:
             return None

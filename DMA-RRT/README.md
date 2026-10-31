@@ -29,7 +29,7 @@ change their plans at the same time, new plans can conflict even though each one
 | 0 | Basic RRT on an empty plane | | Done |
 | 1 | Collision check on a map | | Done |
 | 2 | Tree expansion with closed-loop simulation | Algorithm 1, eq. 11-12 | Done |
-| 3 | Persistent tree, execution loop, lazy check | Algorithms 2-3 | Not started |
+| 3 | Persistent tree, execution loop, lazy check | Algorithms 2-3 | Done |
 | 4 | Collision check against time-parameterized obstacles | Sec. 7.1 | Not started |
 | 5 | Round-robin token with two robots | Sec. 7.2.1 baseline | Not started |
 | 6 | PPI bids (DMA-RRT) | Algorithms 4-5 | Not started |

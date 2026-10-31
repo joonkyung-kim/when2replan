@@ -43,6 +43,34 @@ class Tree:
         self._positions = np.vstack((self._positions, state[:2]))
         return node
 
+    def reroot(self, node: Node) -> None:
+        """
+        Make node the root and remove everything but its descendants. The costs of the nodes stay the same,
+        so they are still comparable with each other
+        """
+        kept = self._get_subtree(node)
+        node.parent = None
+        self._set_nodes([n for n in self.nodes if n in kept])
+
+    def remove_subtree(self, node: Node) -> None:
+        """
+        Remove node and all its descendants
+        """
+        removed = self._get_subtree(node)
+        self._set_nodes([n for n in self.nodes if n not in removed])
+
+    def _get_subtree(self, node: Node) -> set:
+        # a parent is always before its children in self.nodes
+        subtree = {node}
+        for n in self.nodes:
+            if n.parent in subtree:
+                subtree.add(n)
+        return subtree
+
+    def _set_nodes(self, nodes: List[Node]) -> None:
+        self.nodes = nodes
+        self._positions = np.array([n.state[:2] for n in nodes])
+
     def nearest(self, position: np.ndarray) -> Node:
         """
         Get the node closest to position in euclidean distance

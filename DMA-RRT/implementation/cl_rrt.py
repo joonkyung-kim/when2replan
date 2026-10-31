@@ -39,6 +39,7 @@ class CLRRT:
         goal_radius: float = 1.0,
         goal_sample_rate: float = 0.05,
         num_nearest: int = 5,
+        time_to_go_weight: float = 2.0,
         seed: int = 0,
     ) -> None:
         """
@@ -49,6 +50,7 @@ class CLRRT:
         :param goal_sample_rate: probability of sampling the goal itself
         :param num_nearest: number of the closest nodes to try for a sample. With only the closest node,
             a node that cannot go anywhere because of its heading keeps taking the samples around it
+        :param time_to_go_weight: weight of the straight line time to the goal in the cost estimate
         :param seed: seed of the planner's own random generator
         """
         self._collision_checker = collision_checker
@@ -57,6 +59,7 @@ class CLRRT:
         self._goal_radius = goal_radius
         self._goal_sample_rate = goal_sample_rate
         self._num_nearest = num_nearest
+        self._time_to_go_weight = time_to_go_weight
         self._rng = np.random.default_rng(seed)
         self.tree: Tree = None
 
@@ -116,6 +119,47 @@ class CLRRT:
 
     def is_in_goal(self, node: Node, goal_pos: np.ndarray) -> bool:
         return np.linalg.norm(node.state[:2] - goal_pos) <= self._goal_radius
+
+    def best_node(self, goal_pos: np.ndarray) -> Node:
+        """
+        Get the end of the best path in the tree (line 12 of Algorithm 2)
+        A path reaching the goal is always preferred, as in Sec. 8.2 of the paper. Otherwise use the estimated cost.
+        The root is only returned when the tree has no other node, or the robot would never leave it.
+        """
+        goal_nodes = [node for node in self.tree.nodes if self.is_in_goal(node, goal_pos)]
+        if len(goal_nodes) > 0:
+            return min(goal_nodes, key=lambda node: node.cost)
+
+        if len(self.tree) == 1:
+            return self.tree.root
+        return min(self.tree.nodes[1:], key=lambda node: self.cost_estimate(node, goal_pos))
+
+    def cost_estimate(self, node: Node, goal_pos: np.ndarray) -> float:
+        """
+        Estimated travel time to the goal through node
+        The straight line is weighted because it is a lower bound of the time to go, which would make
+        any path look worse than a shorter part of it
+        """
+        if self.is_in_goal(node, goal_pos):
+            return node.cost
+        time_to_go = np.linalg.norm(node.state[:2] - goal_pos) / self._controller.speed
+        return node.cost + self._time_to_go_weight * time_to_go
+
+    def lazy_check(self, node: Node) -> bool:
+        """
+        Simulate the path to node again against the current constraints (Algorithm 3)
+        The first node with an unsafe trajectory is removed with all its children
+        :return: True if the whole path is still safe
+        """
+        for path_node in self.tree.nodes_to(node)[1:]:
+            parent = path_node.parent
+            trajectory, _ = self._controller.simulate_segment(
+                parent.state, parent.waypoint, path_node.waypoint
+            )
+            if self._collision_checker.find_first_unsafe(trajectory[:, :2]) is not None:
+                self.tree.remove_subtree(path_node)
+                return False
+        return True
 
     def path_trajectory(self, node: Node) -> np.ndarray:
         """
