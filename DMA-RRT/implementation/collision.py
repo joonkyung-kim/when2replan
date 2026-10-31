@@ -15,6 +15,43 @@ REPO_DIR = Path(__file__).resolve().parents[2]
 SIXTEEN_PILLAR_MAP = "maps/sixteen_pillar/sixteen_pillar/map.yaml"
 
 
+class MovingObstacle:
+    """
+    Time-parameterized obstacle of Sec. 7.1. It stays at the first state before its start,
+    and stops at the last state after its end, which is the safe terminal state of eq. 7-8
+    """
+
+    def __init__(self, states: np.ndarray, start_time: float, dt: float, radius: float) -> None:
+        """
+        :param states: states at start_time, start_time + dt, ... size: (N, 2 or more)
+        :param start_time: time of the first state [s]
+        :param dt: time between the states [s]
+        :param radius: radius of the obstacle [m]
+        """
+        self.positions = states[:, :2]
+        self.start_time = start_time
+        self.dt = dt
+        self.radius = radius
+
+    def _indices(self, times: np.ndarray) -> np.ndarray:
+        indices = np.round((times - self.start_time) / self.dt).astype(int)
+        return np.clip(indices, 0, len(self.positions) - 1)
+
+    def positions_at(self, times: np.ndarray) -> np.ndarray:
+        """
+        :param times: times size: (N,)
+        :return: positions at the times size: (N, 2)
+        """
+        return self.positions[self._indices(times)]
+
+    def positions_from(self, time: float) -> np.ndarray:
+        """
+        All positions from time on, including where it stops
+        :return: positions size: (N, 2)
+        """
+        return self.positions[self._indices(np.array([time]))[0] :]
+
+
 class CollisionChecker:
     def __init__(
         self,
@@ -35,6 +72,7 @@ class CollisionChecker:
         self.check_interval = self._map.get_resolution()
         self.area_limits = self._map.get_area_limits()
         self.circles: List[Tuple[np.ndarray, float]] = []  # obstacles not in the map: (center, radius)
+        self.moving_obstacles: List[MovingObstacle] = []
 
     def add_circle(self, center: np.ndarray, radius: float) -> None:
         """
@@ -58,7 +96,34 @@ class CollisionChecker:
             dists = np.minimum(dists, np.linalg.norm(points - center, axis=1) - radius)
         return dists
 
+    def moving_obstacle_dists(self, points: np.ndarray, times: np.ndarray) -> np.ndarray:
+        """
+        Distances to the nearest moving obstacle at the given times
+        :param points: positions size: (N, 2)
+        :param times: time of each position size: (N,)
+        :return: distances size: (N,), inf without moving obstacles
+        """
+        dists = np.full(len(points), np.inf)
+        for obstacle in self.moving_obstacles:
+            obstacle_dists = np.linalg.norm(points - obstacle.positions_at(times), axis=1)
+            dists = np.minimum(dists, obstacle_dists - obstacle.radius)
+        return dists
+
+    def is_stop_safe(self, pos: np.ndarray, time: float) -> bool:
+        """
+        Check if the robot can stop at pos from time on and stay safe for all future time (eq. 7)
+        A moving obstacle can come to this position later, even if it is free when the robot arrives
+        """
+        for obstacle in self.moving_obstacles:
+            dists = np.linalg.norm(obstacle.positions_from(time) - pos, axis=1)
+            if dists.min() - obstacle.radius < self.safe_dist:
+                return False
+        return True
+
     def is_free(self, pos: np.ndarray) -> bool:
+        """
+        Check against the obstacles that do not move
+        """
         return self.obstacle_dist(pos) >= self.safe_dist
 
     def edge_points(self, from_pos: np.ndarray, to_pos: np.ndarray) -> np.ndarray:
@@ -79,10 +144,13 @@ class CollisionChecker:
         """
         return self.find_first_unsafe(self.edge_points(from_pos, to_pos))
 
-    def find_first_unsafe(self, points: np.ndarray) -> Optional[np.ndarray]:
+    def find_first_unsafe(
+        self, points: np.ndarray, times: Optional[np.ndarray] = None
+    ) -> Optional[np.ndarray]:
         """
         Find the first point too close to an obstacle or out of the map
         :param points: positions size: (N, 2)
+        :param times: time of each position size: (N,), moving obstacles are only checked with this
         :return: first unsafe point, None if all points are safe
         """
         if len(points) == 0:
@@ -96,6 +164,8 @@ class CollisionChecker:
             | (points[:, 1] > y_max)
         )
         is_unsafe = is_out | (self.obstacle_dists(points) < self.safe_dist)
+        if times is not None:
+            is_unsafe |= self.moving_obstacle_dists(points, times) < self.safe_dist
         unsafe_indices = np.flatnonzero(is_unsafe)
         if len(unsafe_indices) == 0:
             return None

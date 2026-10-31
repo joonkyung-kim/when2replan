@@ -1,7 +1,8 @@
 # DMA-RRT implementation
 
-Steps 0-3 of the plan in [../README.md](../README.md): a basic RRT, collision checking on a map, CL-RRT tree
-expansion, and the execution loop that moves one robot while its tree keeps growing. There is only one robot so far.
+Steps 0-4 of the plan in [../README.md](../README.md): a basic RRT, collision checking on a map, CL-RRT tree
+expansion, the execution loop that moves one robot while its tree keeps growing, and collision checking against
+time-parameterized obstacles. Only one robot plans so far: the moving obstacles follow fixed plans and do not communicate.
 
 ## Setup
 
@@ -27,6 +28,8 @@ cd DMA-RRT/implementation   # all scripts run from this folder
 | `execution.py` | `CLRRTExecutor`: execution loop with the lazy check (step 3) |
 | `compare_cl_rrt.py` | Comparison of the two CL-RRT versions for one planning call |
 | `compare_execution.py` | Comparison of the two CL-RRT versions in the execution loop |
+| `scenarios.py` | Robots with fixed plans driving through the corridors of the sixteen pillar map (step 4) |
+| `compare_moving_obstacles.py` | Comparison of a robot that knows the moving obstacles with one that ignores them |
 | `demo_rrt.py` | Basic RRT: figure and tree growth video |
 | `visualize_rrt_steps.py` | Basic RRT: video explaining each step of one iteration |
 | `demo_cl_rrt.py` | CL-RRT: figure and video with the simulated robot (`--paper` for the paper's version) |
@@ -44,9 +47,11 @@ python3 demo_cl_rrt.py --paper --video cl_rrt_paper.mp4
 
 python3 demo_execution.py --video execution.mp4
 python3 demo_execution.py --no_obstacle --save execution.png
+python3 demo_execution.py --moving --no_obstacle --video moving.mp4
 
 python3 compare_cl_rrt.py     # takes a few minutes
 python3 compare_execution.py  # takes longer, because robots that get stuck run until the time limit
+python3 compare_moving_obstacles.py
 ```
 
 Without `--save` or `--video`, the demos open a matplotlib window.
@@ -240,6 +245,53 @@ Min clearance is measured at the executed states. Between the states it can be s
   parameters are ours. The paper does not report this deadlock for its vehicles, and its planner may avoid it in
   ways the paper does not describe.
 - **Safety held in all variants** after the fix above, including when an obstacle appears on the plan.
+
+## Time-parameterized obstacles (step 4)
+
+As in Sec. 7.1 of the paper, another robot's trajectory is a moving obstacle: a position for each time. The question
+changes from "is this position free?" to "is this position free when the robot is there?". `MovingObstacle` keeps the
+obstacle at its first state before its start, and at its last state after its end, which is its safe terminal state.
+
+The distance limit is `robot_radius + inflation_radius` from the obstacle's edge. For another robot of radius 1.0 m,
+the centers stay at least 2.1 m apart.
+
+### Time along a path
+
+- **Nodes do not store times.** The time at a node is `root time + node cost - root cost`. A robot waiting at the root
+  moves the root time forward, which shifts every path after it. A path that was safe can become unsafe this way,
+  and the lazy check catches it.
+- **Time is checked in all four places:** tree expansion, the lazy check, the committed path, and the check when committing.
+
+### Safe to stop (eq. 7)
+
+The robot stops at the end of its plan and stays there, so that position has to stay safe for all future time. A position
+that is free when the robot arrives can be on another robot's way later. `is_stop_safe` checks this, and `best_node`
+only ends a plan at such a node. A node that is not safe to stop at can still be passed through. If no node qualifies,
+the robot waits at the root.
+
+### Results
+
+Output of `compare_moving_obstacles.py`: sixteen pillar map, 200 seeds, 300 s limit. Three robots drive through the corridors at
+1 m/s from time 0, crossing the way to the goal, and stay at the ends of their lines. The distance is checked at every control
+step, including while the robot is not moving.
+
+| Robot | Reached goal | Median time | 95th percentile | Runs overlapping an obstacle | Min distance to an obstacle's edge | Lazy check removals | Safety stops |
+|---|---|---|---|---|---|---|---|
+| knows the obstacles | 200/200 | 51.0 s | 69.0 s | 0 | 1.107 m | 3 | 0 |
+| ignores the obstacles | 200/200 | 49.0 s | 59.0 s | 166 | -0.993 m | 0 | 0 |
+
+The robot that ignores them overlaps a moving robot in 166 of 200 runs. A negative distance means its center went inside the other
+robot. Avoiding them costs 2 s at the median.
+
+### Limits of this test
+
+- **The moving obstacles do not react, and their whole trajectories are known.** This is the situation a robot without the token
+  has in the paper, but here the trajectories never change. The lazy check is rarely needed, with 3 removals in 200 runs.
+- **A stopped robot cannot avoid an obstacle that drives into it.** It did not happen in these runs, since plans only end where
+  it is safe to stop. In the paper, the other robots also plan around this robot's terminal state, which comes with step 5.
+- **The straight line estimate has local minima.** With seed 0 the robot took 123 s, against the 95th percentile of 69 s. A moving robot
+  parks at `(24.5, 18.7)` and blocks the east corridor to the goal, but the estimate keeps drawing the robot toward that dead end
+  until it goes around. This costs time, not safety. An estimate that knows the map would help, but would not know about moving obstacles.
 
 ## Basic RRT results
 

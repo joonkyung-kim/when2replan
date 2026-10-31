@@ -62,6 +62,7 @@ class CLRRT:
         self._time_to_go_weight = time_to_go_weight
         self._rng = np.random.default_rng(seed)
         self.tree: Tree = None
+        self.root_time = 0.0
 
     def plan(
         self,
@@ -93,12 +94,27 @@ class CLRRT:
                 break
         return best_node
 
-    def reset(self, start_state: np.ndarray) -> None:
+    def reset(self, start_state: np.ndarray, start_time: float = 0.0) -> None:
         """
         Start a new tree from start_state
+        :param start_time: time the robot is at start_state [s]
         """
         self.tree = Tree(start_state)
         self.tree.root.waypoint = self.tree.root.state[:2]
+        self.root_time = start_time
+
+    def node_time(self, node: Node) -> float:
+        """
+        Time the robot arrives at node. Only the root's time is stored, so a robot waiting at the root
+        delays all the paths after it
+        """
+        return self.root_time + node.cost - self.tree.root.cost
+
+    def trajectory_times(self, start_time: float, num_states: int) -> np.ndarray:
+        """
+        Times of the states of a trajectory starting at start_time, which does not include the state at start_time
+        """
+        return start_time + self._controller.dt * np.arange(1, num_states + 1)
 
     def step(self, goal_pos: np.ndarray) -> CLRRTStep:
         """
@@ -124,15 +140,22 @@ class CLRRT:
         """
         Get the end of the best path in the tree (line 12 of Algorithm 2)
         A path reaching the goal is always preferred, as in Sec. 8.2 of the paper. Otherwise use the estimated cost.
-        The root is only returned when the tree has no other node, or the robot would never leave it.
+        A path has to end where the robot can stay safe for all future time (eq. 7).
+        The root is only returned when there is no other node to end at, or the robot would never leave it.
         """
-        goal_nodes = [node for node in self.tree.nodes if self.is_in_goal(node, goal_pos)]
+        nodes = [
+            node
+            for node in self.tree.nodes
+            if self._collision_checker.is_stop_safe(node.state[:2], self.node_time(node))
+        ]
+        goal_nodes = [node for node in nodes if self.is_in_goal(node, goal_pos)]
         if len(goal_nodes) > 0:
             return min(goal_nodes, key=lambda node: node.cost)
 
-        if len(self.tree) == 1:
+        nodes = [node for node in nodes if node is not self.tree.root]
+        if len(nodes) == 0:
             return self.tree.root
-        return min(self.tree.nodes[1:], key=lambda node: self.cost_estimate(node, goal_pos))
+        return min(nodes, key=lambda node: self.cost_estimate(node, goal_pos))
 
     def cost_estimate(self, node: Node, goal_pos: np.ndarray) -> float:
         """
@@ -156,7 +179,8 @@ class CLRRT:
             trajectory, _ = self._controller.simulate_segment(
                 parent.state, parent.waypoint, path_node.waypoint
             )
-            if self._collision_checker.find_first_unsafe(trajectory[:, :2]) is not None:
+            times = self.trajectory_times(self.node_time(parent), len(trajectory))
+            if self._collision_checker.find_first_unsafe(trajectory[:, :2], times) is not None:
                 self.tree.remove_subtree(path_node)
                 return False
         return True
@@ -217,7 +241,8 @@ class CLRRT:
         trajectory, is_reached = self._controller.simulate_segment(
             nearest_node.state, nearest_node.waypoint, waypoint
         )
-        collision_pos = self._collision_checker.find_first_unsafe(trajectory[:, :2])
+        times = self.trajectory_times(self.node_time(nearest_node), len(trajectory))
+        collision_pos = self._collision_checker.find_first_unsafe(trajectory[:, :2], times)
         # a node needs at least one state of its own
         if collision_pos is not None or not is_reached or len(trajectory) == 0:
             return CLRRTAttempt(nearest_node, waypoint, trajectory, collision_pos, None)

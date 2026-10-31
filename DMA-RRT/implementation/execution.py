@@ -58,7 +58,7 @@ class CLRRTExecutor:
         self._collision_checker = collision_checker
         self._goal_pos = np.asarray(goal_pos, dtype=float)
         self._dt = controller.dt
-        self._steps_per_cycle = int(round(replan_interval / self._dt))
+        self.steps_per_cycle = int(round(replan_interval / self._dt))
         self._samples_per_cycle = samples_per_cycle
         self._turn_rate = turn_rate
 
@@ -98,7 +98,8 @@ class CLRRTExecutor:
         is_path_changed = plan_nodes[-1] is not self.plan_nodes[-1]
         self.plan_nodes = plan_nodes
 
-        is_turning = len(self.committed_states) == 0 and len(self.plan_nodes) == 1
+        # with other nodes in the tree, the robot is only waiting for a moving obstacle to pass
+        is_turning = len(self.committed_states) == 0 and len(self._planner.tree) == 1
         executed_states = self._turn_in_place() if is_turning else self._move()
         return CycleResult(executed_states, num_lazy_removed, is_safety_stop, is_path_changed, is_turning)
 
@@ -106,13 +107,14 @@ class CLRRTExecutor:
         """
         The safety action of Algorithm 2. The committed path cannot be changed, so stop here and start a new tree
         """
+        times = self._planner.trajectory_times(self.time, len(self.committed_states))
         is_unsafe = (
-            self._collision_checker.find_first_unsafe(self.committed_states[:, :2]) is not None
+            self._collision_checker.find_first_unsafe(self.committed_states[:, :2], times) is not None
         )
         if not is_unsafe:
             return False
 
-        self._planner.reset(self.state)
+        self._planner.reset(self.state, self.time)
         self.committed_states = np.empty((0, 3))
         self.plan_nodes = [self._planner.tree.root]
         return True
@@ -124,9 +126,12 @@ class CLRRTExecutor:
         :return: number of paths removed
         """
         num_removed = 0
-        while len(self.committed_states) < self._steps_per_cycle and len(self.plan_nodes) > 1:
+        while len(self.committed_states) < self.steps_per_cycle and len(self.plan_nodes) > 1:
             next_node = self.plan_nodes[1]
-            if self._collision_checker.find_first_unsafe(next_node.trajectory[:, :2]) is not None:
+            times = self._planner.trajectory_times(
+                self.time + len(self.committed_states) * self._dt, len(next_node.trajectory)
+            )
+            if self._collision_checker.find_first_unsafe(next_node.trajectory[:, :2], times) is not None:
                 self._planner.tree.remove_subtree(next_node)
                 self.plan_nodes = self.plan_nodes[:1]
                 num_removed += 1
@@ -134,6 +139,7 @@ class CLRRTExecutor:
             self.committed_states = np.vstack((self.committed_states, next_node.trajectory))
             self.plan_nodes = self.plan_nodes[1:]
         self._planner.tree.reroot(self.plan_nodes[0])
+        self._planner.root_time = self.time + len(self.committed_states) * self._dt
         return num_removed
 
     def _turn_in_place(self) -> np.ndarray:
@@ -146,20 +152,20 @@ class CLRRTExecutor:
         delta_v = self._turn_rate * model.wheel_base
         states = []
         state = self.state
-        for _ in range(self._steps_per_cycle):
+        for _ in range(self.steps_per_cycle):
             state = model.step(state, 0.0, delta_v, self._dt)
             states.append(state)
         self.state = state
-        self._planner.reset(self.state)
+        self.time += self.steps_per_cycle * self._dt
+        self._planner.reset(self.state, self.time)
         self.plan_nodes = [self._planner.tree.root]
-        self.time += self._steps_per_cycle * self._dt
         return np.array(states)
 
     def _move(self) -> np.ndarray:
         """
         Move along the committed path, the robot stays stopped when the path ends
         """
-        executed_states = self.committed_states[: self._steps_per_cycle]
+        executed_states = self.committed_states[: self.steps_per_cycle]
         for i, state in enumerate(executed_states):
             if self._planner.is_in_goal(Node(state, None, 0.0), self._goal_pos):
                 executed_states = executed_states[: i + 1]
@@ -167,5 +173,5 @@ class CLRRTExecutor:
         self.committed_states = self.committed_states[len(executed_states) :]
         if len(executed_states) > 0:
             self.state = executed_states[-1]
-        self.time += self._steps_per_cycle * self._dt
+        self.time += self.steps_per_cycle * self._dt
         return executed_states

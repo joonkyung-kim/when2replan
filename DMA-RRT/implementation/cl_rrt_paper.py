@@ -57,9 +57,10 @@ class PaperCLRRT(CLRRT):
         controller = self._controller
         states: List[np.ndarray] = []
         current = nearest_node.state
+        start_time = self.node_time(nearest_node)
         is_reached = False
         unsafe_state = None
-        for _ in range(controller.max_segment_steps(nearest_node.waypoint, waypoint)):
+        for step in range(controller.max_segment_steps(nearest_node.waypoint, waypoint)):
             target_pos, is_reached = controller.lookahead_point(
                 current[:2], nearest_node.waypoint, waypoint
             )
@@ -67,7 +68,8 @@ class PaperCLRRT(CLRRT):
                 break
             v, delta_v = controller.control(current, target_pos)
             next_state = controller.model.step(current, v, delta_v, controller.dt)
-            if self._collision_checker.find_first_unsafe(next_state[:2][np.newaxis]) is not None:
+            time = np.array([start_time + (step + 1) * controller.dt])
+            if self._collision_checker.find_first_unsafe(next_state[:2][np.newaxis], time) is not None:
                 unsafe_state = next_state
                 break
             states.append(next_state)
@@ -94,7 +96,8 @@ class PaperCLRRT(CLRRT):
         trajectory, is_reached = controller.simulate_segment(
             nearest_node.state, nearest_node.waypoint, final_waypoint
         )
-        is_unsafe = self._collision_checker.find_first_unsafe(trajectory[:, :2]) is not None
+        times = self.trajectory_times(start_time, len(trajectory))
+        is_unsafe = self._collision_checker.find_first_unsafe(trajectory[:, :2], times) is not None
         if is_unsafe or not is_reached or len(trajectory) == 0:
             return failed
         return self._add_node(nearest_node, final_waypoint, trajectory)

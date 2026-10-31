@@ -8,6 +8,7 @@
     python3 demo_execution.py --video execution.mp4
     python3 demo_execution.py --no_obstacle --save execution.png
     python3 demo_execution.py --paper --video execution_paper.mp4  # Algorithm 1 of the paper as written
+    python3 demo_execution.py --moving --no_obstacle --video moving.mp4  # robots with fixed plans in the corridors
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from cl_rrt_paper import PaperCLRRT
 from collision import CollisionChecker, SIXTEEN_PILLAR_MAP
 from dynamics import PurePursuit, SkidSteerModel
 from execution import CLRRTExecutor, CycleResult
+from scenarios import corridor_obstacles
 
 TRAIL_COLOR = "tab:red"
 COMMITTED_COLOR = "black"
@@ -82,6 +84,22 @@ class ExecutionFigure:
             y = 0.72 - i * 0.075
             panel.text(0.02, y, name, fontsize=11, fontweight="bold", color=color)
             panel.text(0.05, y - 0.035, text, fontsize=10)
+        if len(checker.moving_obstacles) > 0:
+            panel.text(
+                0.02, 0.45, "Orange: moving robot. Its path is red now, green in 10 s",
+                fontsize=10.5, fontweight="bold", color=OBSTACLE_COLOR,
+            )
+
+        self._moving_circles = []
+        self._moving_lines = []
+        for obstacle in checker.moving_obstacles:
+            circle = plt.Circle(obstacle.positions[0], obstacle.radius, color=OBSTACLE_COLOR, zorder=6)
+            ax.add_patch(circle)
+            lines = LineCollection([], linewidths=3.0, zorder=3)
+            ax.add_collection(lines)
+            self._moving_circles.append(circle)
+            self._moving_lines.append(lines)
+        self.set_moving_obstacles(0.0)
         panel.text(0.02, 0.385, "Each cycle (1 s)", fontsize=12, fontweight="bold")
         steps = [
             "1. Extend the committed path to cover this cycle",
@@ -113,6 +131,20 @@ class ExecutionFigure:
         self._trail.set_data(trail[:, 0], trail[:, 1])
         self._committed_line.set_data(committed[:, 0], committed[:, 1])
         self._plan_line.set_data(plan[:, 0], plan[:, 1])
+
+    def set_moving_obstacles(self, time: float) -> None:
+        """
+        Draw the moving obstacles at time, with their future paths colored by the arrival time as in Fig. 5 of the paper
+        """
+        for obstacle, circle, lines in zip(self._checker.moving_obstacles, self._moving_circles, self._moving_lines):
+            positions = obstacle.positions_from(time)
+            circle.center = (positions[0, 0], positions[0, 1])
+            if len(positions) < 2:
+                lines.set_segments([])
+                continue
+            lines.set_segments(np.stack([positions[:-1], positions[1:]], axis=1))
+            green_ratio = np.minimum(np.arange(len(positions) - 1) * obstacle.dt / 10.0, 1.0)
+            lines.set_color(np.column_stack([1.0 - green_ratio, green_ratio, np.zeros_like(green_ratio)]))
 
     def add_circle(self, center: np.ndarray, radius: float) -> None:
         self._ax.add_patch(plt.Circle(center, radius + self._checker.safe_dist, color="mistyrose", zorder=1))
@@ -150,6 +182,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max_time", type=float, default=300.0, help="give up after this time [s]")
     parser.add_argument("--no_obstacle", action="store_true", help="do not add an obstacle during the run")
+    parser.add_argument("--moving", action="store_true", help="add robots with fixed plans driving through the corridors")
     parser.add_argument("--obstacle_time", type=float, default=8.0, help="when the obstacle appears [s]")
     parser.add_argument("--obstacle_ahead", type=float, default=6.0, help="the obstacle appears this far ahead on the plan [s]")
     parser.add_argument("--obstacle_radius", type=float, default=1.5)
@@ -167,6 +200,8 @@ def main() -> None:
         parser.error(f"goal {args.goal} is too close to an obstacle")
 
     controller = PurePursuit(SkidSteerModel())
+    if args.moving:
+        checker.moving_obstacles = corridor_obstacles(checker, controller)
     if args.paper:
         planner = PaperCLRRT(checker, controller, goal_radius=args.goal_radius, seed=args.seed)
     else:
@@ -210,8 +245,6 @@ def main() -> None:
                 write_frames(2.0)
 
         cycle_time = executor.time
-        before_state = executor.state
-        committed_before = executor.committed_states
         result = executor.update()
 
         num_changes += result.is_path_changed
@@ -222,7 +255,7 @@ def main() -> None:
         figure.set_text(
             "The robot moves while the tree keeps growing",
             f"Time: {cycle_time:.0f} s,  nodes in the tree: {len(planner.tree)}",
-            f"Plan changes: {num_changes},  lazy check removals: {num_lazy},  safety stops: {num_stops},  turns: {num_turns}",
+            f"Plan changes: {num_changes},  lazy removals: {num_lazy},  safety stops: {num_stops},  turns: {num_turns}",
             message,
             color,
         )
@@ -231,16 +264,16 @@ def main() -> None:
         plan_states = executor.future_states()[len(executor.committed_states) :]
         num_executed = len(result.executed_states)
         whole_committed = np.vstack([result.executed_states, executor.committed_states])
-        for i in range(num_executed):
-            state = result.executed_states[i]
-            trail = np.vstack([trail, state])
-            figure.set_robot(
-                state, trail, whole_committed[i:], np.vstack([whole_committed[-1:], plan_states])[:, :2]
-            )
+        plan_line = np.vstack([whole_committed[-1:], plan_states])[:, :2]
+        # the robot stays still for the rest of the cycle when it has nowhere to go
+        state = executor.state
+        for i in range(executor.steps_per_cycle):
+            if i < num_executed:
+                state = result.executed_states[i]
+                trail = np.vstack([trail, state])
+            figure.set_robot(state, trail, whole_committed[i:], plan_line)
+            figure.set_moving_obstacles(cycle_time + (i + 1) * controller.dt)
             write_frames(1.0 / args.fps)
-        if num_executed == 0:
-            write_frames(0.3)
-            figure.set_robot(before_state, trail, committed_before, plan_states[:, :2])
 
     is_reached = executor.is_in_goal()
     print(
@@ -250,7 +283,7 @@ def main() -> None:
     figure.set_text(
         "Reached the goal" if is_reached else "Did not reach the goal in time",
         f"Time: {executor.time:.0f} s",
-        f"Plan changes: {num_changes},  lazy check removals: {num_lazy},  safety stops: {num_stops},  turns: {num_turns}",
+        f"Plan changes: {num_changes},  lazy removals: {num_lazy},  safety stops: {num_stops},  turns: {num_turns}",
     )
     figure.set_robot(executor.state, trail, np.empty((0, 3)), np.empty((0, 2)))
     write_frames(3.0)
