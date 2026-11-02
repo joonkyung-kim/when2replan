@@ -15,6 +15,10 @@
       once per cycle, as Sec. 7.2.3 waits about 10 s for the token to go around ten robots. plan_for_a_cycle=False
       uses it at the end of the robot's current cycle instead, as in the loop of Algorithm 4, but not in the control
       step it arrived in. This passes the token about 2 times per cycle.
+
+    paper_strict=True (step 11) undoes the decisions that the paper does specify otherwise: the robots commit only up to
+    t + delta t (Algorithm 2), the first token goes to a random robot (line 2 of Algorithm 4), and bids are not set
+    back to 0 after a plan, so every robot sends every bid (line 13 of Algorithm 4) and a new bid replaces an old one.
 """
 
 from __future__ import annotations
@@ -46,6 +50,7 @@ class AsyncTeam(Team):
         plan_for_a_cycle: bool = True,
         paper_tree: bool = False,
         can_turn: bool = True,
+        paper_strict: bool = False,
     ) -> None:
         """
         :param same_phase: all cycles start at the same time, which is the closest to Team
@@ -54,10 +59,20 @@ class AsyncTeam(Team):
         :param bids_only_when_better: only send a bid that is higher than the last one this robot sent (Sec. 5.3).
             False sends every bid (line 13 of Algorithm 4). The two parts of the paper differ here
         :param plan_for_a_cycle: use the token one cycle after getting it, even in the middle of the robot's own cycle
+        :param paper_strict: see the top of this file, only for "merit" and "round_robin". Overrides
+            bids_only_when_better to False
         """
         if coordination not in ASYNC_COORDINATIONS:
             raise ValueError(f"coordination must be one of {ASYNC_COORDINATIONS}")
-        super().__init__(start_states, goals, controller, coordination, map_path, seed, stop_interval, paper_tree, can_turn)
+        if paper_strict and coordination not in ("merit", "round_robin"):
+            raise ValueError("paper_strict is only for merit and round_robin")
+        super().__init__(
+            start_states, goals, controller, coordination, map_path, seed, stop_interval, paper_tree, can_turn,
+            commit_one_cycle=paper_strict, random_first_token=paper_strict,
+        )
+        if paper_strict:
+            bids_only_when_better = False
+        self._reset_bids_after_plan = not paper_strict
         self._dt = controller.dt
         executor = self.agents[0].executor
         self._steps_per_cycle = executor.steps_per_cycle
@@ -158,11 +173,13 @@ class AsyncTeam(Team):
             self.num_estops += 1
 
         message = agent.make_plan_message(winner)
-        self._last_bids[agent.agent_id] = 0.0
+        if self._reset_bids_after_plan:
+            self._last_bids[agent.agent_id] = 0.0
         for other in self.agents:
             if other is not agent:
                 other.receive_plan(message)
-                other.bids[agent.agent_id] = 0.0
+                if self._reset_bids_after_plan:
+                    other.bids[agent.agent_id] = 0.0
         self.token_holder = winner
         self._token_use_step = self._step_count + self._steps_per_cycle
         self.is_plan_sent = True

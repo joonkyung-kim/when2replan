@@ -1,9 +1,10 @@
 # DMA-RRT implementation
 
-Steps 0-6 of the plan in [../README.md](../README.md): a basic RRT, collision checking on a map, CL-RRT tree
+Steps 0-11 of the plan in [../README.md](../README.md): a basic RRT, collision checking on a map, CL-RRT tree
 expansion, the execution loop that moves a robot while its tree keeps growing, collision checking against
-time-parameterized obstacles, a team of robots sharing plans with a token, and DMA-RRT, which passes the token by bids.
-Emergency stops (Cooperative DMA-RRT) are not implemented yet.
+time-parameterized obstacles, a team of robots sharing plans with a token, DMA-RRT, which passes the token by bids,
+emergency stops (Cooperative DMA-RRT), and robots running their own cycles. Step 11 sets up the DMA-RRT baseline,
+see [Using DMA-RRT as a baseline](#using-dma-rrt-as-a-baseline-step-11).
 
 ## Setup
 
@@ -41,7 +42,7 @@ Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, s
 | `dma_rrt/agent.py` | `Agent`: one robot of a team, with its messages (step 5) |
 | `dma_rrt/cooperative.py` | `CooperativeAgent`: emergency stops of Cooperative DMA-RRT (step 7) |
 | `dma_rrt/team.py` | `Team`: robots coordinated with emergency stops (step 7), bids (step 6), a round-robin token (step 5), or not at all |
-| `dma_rrt/async_team.py` | `AsyncTeam`: each robot runs its own cycles on a virtual clock, with frequent bids (step 9) |
+| `dma_rrt/async_team.py` | `AsyncTeam`: each robot runs its own cycles on a virtual clock, with frequent bids (step 9), and `paper_strict` for the baseline (step 11) |
 | `dma_rrt/scenarios.py` | Test scenes: robots with fixed plans, robots swapping points on the pillar map, ten robots on the open map, the scenes of Fig. 4 and Fig. 7 of the paper |
 | `maps/make_paper_maps.py` | Makes the maps of Fig. 4 and Fig. 7(a) of the paper, read from the figures |
 | `demos/demo_rrt.py` | Basic RRT: figure and tree growth video |
@@ -77,6 +78,7 @@ python3 -m demos.demo_team --scene hallway_2 --video outputs/team_hallway.mp4
 python3 -m demos.demo_team --scene four_agents_4 --coordination cooperative --video outputs/team_four_agents_cooperative.mp4
 python3 -m demos.demo_team --scene open_10 --asynchronous --video outputs/team_async_open_10.mp4
 python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --video outputs/team_paper_four_agents_4.mp4
+python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/team_strict_four_agents_4.mp4
 
 python3 -m experiments.compare_cl_rrt     # takes a few minutes
 python3 -m experiments.compare_execution  # takes longer, because robots that get stuck run until the time limit
@@ -780,10 +782,10 @@ The robot only turns on the spot if `L1` is about 0.67 m or less. Without the tu
 | # | Paper | Ours | Status |
 |---|---|---|---|
 | 1 | Algorithm 1, line 12: "for each feasible node N produced", while line 11 and Sec. 3.1 describe one node. Fig. 7(b) shows about 14 waypoints on one plan | `PaperCLRRT` adds one node per sample | Unclear in the paper, and our result looks different, see below. **Not tested** |
-| 2 | Algorithm 2, lines 5 and 7: the tree grows from the state at `t + Δt` | The root moves to the first node the robot cannot avoid, which can be much later than `t + Δt` | Our decision, depends on 1 |
+| 2 | Algorithm 2, lines 5 and 7: the tree grows from the state at `t + Δt` | The root moves to the first node the robot cannot avoid, which can be much later than `t + Δt` | Our decision, depends on 1. As in the paper with `--paper_strict` (step 11) |
 | 3 | Algorithm 2, line 6: grows for a fixed time | 30 samples per cycle | Our decision, so that runs can be repeated. Step 8 tests other numbers |
-| 4 | Algorithm 4, line 2: the first token goes to a random robot | Always robot 0 | Simple to change, we expect little effect after the first seconds. Not tested |
-| 5 | Algorithm 4, line 12: the bid is the difference of the costs | Not below 0, and set back to 0 after sending a plan | The first is our reading of eq. 5 and fixes starving robots (step 6), the second is our decision (step 9). Not in the paper |
+| 4 | Algorithm 4, line 2: the first token goes to a random robot | Always robot 0 | Simple to change, we expect little effect after the first seconds. Random with `--paper_strict` (step 11) |
+| 5 | Algorithm 4, line 12: the bid is the difference of the costs | Not below 0, and set back to 0 after sending a plan | The first is our reading of eq. 5 and fixes starving robots (step 6), the second is our decision (step 9). Not in the paper. `--paper_strict` removes the second (step 11) |
 | 6 | Sec. 7.2.2: the cost is travel time. How partial paths compare is not given | Adds 2 times the straight line time to the goal, and `NO_GOAL_PENALTY` | Our decision. Its effect on `cooperative_paper` is not tested |
 | 7 | Sec. 5.3: the message has waypoints and the winner | Also the start state, its time, and where the reference starts | Needed because of 2 and of the turning rule |
 | 8 | Not in the paper | Turning rule | See above |
@@ -878,13 +880,90 @@ The team then loses more on top of this. A short test with 8 seeds and 200 s, `m
 | The same with 300 samples | 10.12 ± 0.48 | 3.38 ± 0.56 |
 | Our tree, 30 samples per cycle | 10.31 ± 0.37 | 4.69 ± 0.46 |
 
-More samples help the paper's tree, and more nodes per expansion do not clearly help. The node variant lives in a test script, not in `dma_rrt/`. We did not test why the trips are long. Changing the weight of the time to the goal to 1 or 5 did not shorten them.
+More samples help the paper's tree, and more nodes per expansion do not clearly help. The node variant lives in a test script, not in `dma_rrt/`. Changing the weight of the time to the goal to 1 or 5 did not shorten the trips. Step 11 finds that they come from RRT itself, see [Why one robot takes a long way](#why-one-robot-takes-a-long-way).
 
 ### Limits of this step
 
 - **Difference 1 is only tested in the short run above, without emergency stops**, so we cannot yet say whether it explains the gap for emergency stops.
 - **The map of `hallway_2` is read from Fig. 4 by eye**, and the paper gives no goal counts for it.
 - **The paper does not give its speed, map size, or planning time per cycle**, so only the gains can be compared, not the goal counts.
+
+## Using DMA-RRT as a baseline (step 11)
+
+This step makes DMA-RRT (`merit`) and the round-robin token usable as a baseline: it checks why one robot alone takes a long way, and undoes the differences from the paper that the paper does specify. Emergency stops (Algorithms 6-8) are not part of it, since `cooperative_paper` still loses most goals for a reason we have not found (step 7).
+
+**The baseline:**
+
+```bash
+python3 -m experiments.compare_async --paper_tree --clip_each_wheel --paper_strict --coordinations round_robin merit --variants timed_fast_better
+python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/team_strict_four_agents_4.mp4
+```
+
+`--paper_strict` (`AsyncTeam(paper_strict=True)`) changes three things, all off by default:
+
+| # in step 10 | Paper | With `--paper_strict` |
+|---|---|---|
+| 2 | Algorithm 2, line 5: the tree grows from the state at `t + Δt` | The robot commits for one cycle only. A node is split at `t + Δt` (`CLRRTExecutor._split`), and the new node becomes the root |
+| 4 | Algorithm 4, line 2: the first token goes to a random robot | Random, from the seed |
+| 5 | Algorithm 4, lines 12-13: every robot not holding the token sends its bid | Bids are not set back to 0 after a plan, and every bid is sent, so a new bid replaces the old one. Bids below 0 are still set to 0, our reading of eq. 5 |
+
+**The split keeps the trajectory.** The new node keeps the reference line of the segment it splits, so the rest of the segment is simulated exactly as before. A reference that started at the split point instead would change the segment's step limit in `PurePursuit.max_segment_steps`, and could cut the trajectory short. In 6 runs of 120 s, all 1662 splits left the future states unchanged, and every plan was reproduced exactly from its waypoints. New branches from the split node also start their reference line at the old waypoint, which the paper does not specify.
+
+Without `--paper_strict`, the results are the same as before this step: a run with 4 seeds of all four coordinations gave the same output as the code of step 10.
+
+### Why one robot takes a long way
+
+Step 10 found trips of 1.5 to 1.7 times the straight line for one robot alone, and left the cause open. Two measurements, 8 seeds each, each wheel limited on its own, `L1 = 1.5 m`:
+
+**One tree, grown once without moving** (`plan` with all samples). Length of the best path to the goal over the straight line, median:
+
+| Map | Tree | 300 samples | 1000 samples | 3000 samples |
+|---|---|---|---|---|
+| `open_40`, no obstacles, 42.4 m | Paper's | 1.60 (5 of 8 found) | 1.54 | 1.51 |
+| `open_40` | Ours | 1.41 | 1.41 | 1.41 |
+| `four_agents`, 49.8 m | Paper's | 1.71 (1 of 8 found) | 1.75 (4 of 8) | 1.69 |
+| `four_agents` | Ours | 1.55 (5 of 8) | 1.56 | 1.56 |
+
+**One robot moving between the two goals for 400 s.** Length of a trip over the straight line, median, and the time the robot was committed:
+
+| Map | Tree | Trip, step 10 | Committed, median / max | Trip, `--paper_strict` | Committed |
+|---|---|---|---|---|---|
+| `open_40` | Paper's | 1.50 | 5.3 / 45.2 s | 1.50 | 1.0 s |
+| `open_40` | Ours | 1.48 | 2.1 / 5.8 s | 1.53 | 1.0 s |
+| `four_agents` | Paper's | 1.72 | 3.8 / 27.2 s | 1.85 | 1.0 s |
+| `four_agents` | Ours | 1.62 | 2.1 / 5.8 s | 1.62 | 1.0 s |
+
+**The long trips come from RRT itself, not from the execution loop.** A tree grown once already has paths of 1.4 to 1.7 times the straight line, also on a map without obstacles, and 10 times more samples hardly shorten them. RRT keeps the first branch that reaches a region and never rewires it, so its paths do not get shorter. The moving robot travels about as far as that best path, and committing for only one cycle does not change the trip. The paper's tree drives long straight lines toward uniform samples, and ours winds in 2 m steps. Algorithm 1 has no step to shorten paths either, so a baseline that follows it should show the same.
+
+### Results
+
+24 seeds, 600 s, `timed_fast_better`, the paper's tree, each wheel limited on its own, `L1 = 1.5 m`, and the turning rule. Step 10 is the same without `--paper_strict`.
+
+| Scene | Coordination | Goals per robot, step 10 | Goals per robot, `--paper_strict` | 95% interval | Longest stop in a run, median / max |
+|---|---|---|---|---|---|
+| `hallway_2` | `round_robin` | 9.12 | 9.17 | [8.80, 9.54] | 6 / 10 s |
+| `hallway_2` | `merit` | 9.12 | 9.17 | [8.80, 9.54] | 6 / 10 s |
+| `four_agents_4` | `round_robin` | 3.49 | 3.60 | [3.39, 3.82] | 20 / 68 s |
+| `four_agents_4` | `merit` | 3.54 | 3.78 | [3.62, 3.94] | 28 / 58 s |
+| `open_10` | `round_robin` | 8.47 | 8.24 | [8.08, 8.39] | 20 / 28 s |
+| `open_10` | `merit` | 9.12 | 9.15 | [8.98, 9.32] | 54 / 91 s |
+
+**Safety.** All 6 settings had 0 conflicts in about 86,000 plans, 0 wrong beliefs in about 30 million, and a minimum distance of 2.100 m between centers, the limit.
+
+| Result | Paper | Step 10 | `--paper_strict` |
+|---|---|---|---|
+| Ten robots, open map: `round_robin` to `merit` | +21% | +8% | +11%, intervals do not overlap |
+| Four robots with obstacles: `round_robin` to `merit` | 0% | +1% | +5%, intervals overlap |
+
+### What is left, to state when using this baseline
+
+- **The turning rule** (difference 8). Not in the paper. Without it, robots stay stuck at walls with `L1 = 1.5 m` (step 10).
+- **The cost of a path that does not reach the goal** (difference 6). The paper only gives travel time. We add 2 times the straight line time to the goal and `NO_GOAL_PENALTY`.
+- **One node per sample in Algorithm 1** (difference 1). Line 12 can also be read as several nodes per sample. A node every 2 m did not clearly help in step 10.
+- **Bids below 0 are set to 0** (difference 5, first half), our reading of eq. 5.
+- **The message has the start state and its time** (difference 7), needed because of the turning rule.
+- **A virtual clock in one process**, with a fixed number of samples per cycle instead of a time budget, and a network without delay, as assumed in Sec. 5.1.
+- **Values the paper does not give**: `L1`, speed, map sizes, and samples per cycle. Only gains can be compared with the paper, not goal counts.
 
 ## Basic RRT results
 

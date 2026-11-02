@@ -45,6 +45,7 @@ class CLRRTExecutor:
         min_tree_growth: int = 2,
         can_turn: bool = True,
         stop_at_goal: bool = True,
+        commit_one_cycle: bool = False,
     ) -> None:
         """
         :param planner: planner to grow the tree
@@ -60,6 +61,8 @@ class CLRRTExecutor:
         :param can_turn: False never turns in place, as in the paper
         :param stop_at_goal: stop moving at the first state in the goal region. A robot sharing its plan has to
             keep to the plan's timing instead, so it needs False
+        :param commit_one_cycle: commit only up to the state at t + delta t, as in line 5 of Algorithm 2, by splitting
+            the node there. False commits up to the end of the node, which can be much later with long segments
         """
         self._planner = planner
         self._controller = controller
@@ -72,6 +75,7 @@ class CLRRTExecutor:
         self._turn_rate = turn_rate
         self._min_tree_growth = min_tree_growth
         self._can_turn = can_turn
+        self._commit_one_cycle = commit_one_cycle
 
         self.state = np.asarray(start_state, dtype=float)
         self.time = 0.0
@@ -205,6 +209,9 @@ class CLRRTExecutor:
         num_removed = 0
         while len(self.committed_states) < self.steps_per_cycle and len(self.plan_nodes) > 1:
             next_node = self.plan_nodes[1]
+            num_left = self.steps_per_cycle - len(self.committed_states)
+            if self._commit_one_cycle and len(next_node.trajectory) > num_left:
+                next_node = self._split(next_node, num_left)
             times = self._planner.trajectory_times(
                 self.time + len(self.committed_states) * self._dt, len(next_node.trajectory)
             )
@@ -220,6 +227,20 @@ class CLRRTExecutor:
         num_steps_at_root = max(len(self.committed_states), self.steps_per_cycle)
         self._planner.root_time = self.time + num_steps_at_root * self._dt
         return num_removed
+
+    def _split(self, node: Node, num_steps: int) -> Node:
+        """
+        Split the segment to node after num_steps states, and put the new node into the plan
+        The new node keeps the reference of the segment, so the rest of the trajectory to node is simulated
+        the same as before. New branches from it also start their reference there, which the paper does not specify
+        :return: new node
+        """
+        middle = self._planner.tree.insert_parent(node, node.trajectory[num_steps - 1], num_steps * self._dt)
+        middle.waypoint = middle.parent.waypoint
+        middle.trajectory = node.trajectory[:num_steps]
+        node.trajectory = node.trajectory[num_steps:]
+        self.plan_nodes.insert(1, middle)
+        return middle
 
     def _turn_in_place(self) -> np.ndarray:
         """

@@ -43,6 +43,21 @@ class Tree:
         self.positions = np.vstack((self.positions, state[:2]))
         return node
 
+    def insert_parent(self, node: Node, state: np.ndarray, edge_cost: float) -> Node:
+        """
+        Insert a new node between node and its parent. The cost of node stays the same
+        :param state: state of the new node
+        :param edge_cost: cost from the old parent to the new node
+        :return: inserted node
+        """
+        new_node = Node(state, node.parent, node.parent.cost + edge_cost)
+        node.parent = new_node
+        # keep a parent before its children
+        index = self.nodes.index(node)
+        self.nodes.insert(index, new_node)
+        self.positions = np.insert(self.positions, index, state[:2], axis=0)
+        return new_node
+
     def reroot(self, node: Node) -> None:
         """
         Make node the root and remove everything but its descendants. The costs of the nodes stay the same,

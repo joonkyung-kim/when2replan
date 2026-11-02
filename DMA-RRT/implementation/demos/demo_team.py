@@ -10,6 +10,7 @@
     python3 -m demos.demo_team --scene hallway_2 --coordination cooperative --video outputs/team_hallway.mp4
     python3 -m demos.demo_team --open_map --asynchronous --video outputs/team_async_open.mp4
     python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --coordination merit --video outputs/team_paper_four_agents.mp4
+    python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/team_strict_four_agents.mp4
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ COLORS = ["tab:blue", "tab:orange", "tab:purple", "tab:brown", "tab:pink", "tab:
 
 
 class TeamFigure:
-    def __init__(self, team: Team, coordination: str, asynchronous: bool = False) -> None:
+    def __init__(self, team: Team, coordination: str, asynchronous: bool = False, paper_strict: bool = False) -> None:
         self._team = team
         self._coordination = coordination
         self.fig = plt.figure(figsize=(12, 6.75), dpi=120)
@@ -75,7 +76,17 @@ class TeamFigure:
         self._rows = []
         for i, (agent, color) in enumerate(zip(team.agents, COLORS)):
             self._rows.append(panel.text(0.02, 0.85 - i * 0.034, "", fontsize=10, color=color, fontweight="bold"))
-        if asynchronous:
+        if asynchronous and paper_strict:
+            lines = [
+                "Each robot has its own cycle of 1 s",
+                "1. The red ring has the token. It changes its plan 1 s after",
+                "    getting it, even in the middle of its own cycle.",
+                "2. It sends its waypoints and the robot with the best bid.",
+                "3. The others keep growing their trees and send a bid",
+                "    every 0.2 s. A new bid replaces the old one.",
+                "4. Each robot commits to its plan for 1 s only.",
+            ]
+        elif asynchronous:
             lines = [
                 "Each robot has its own cycle of 1 s",
                 "1. The red ring has the token. It changes its plan 1 s after",
@@ -189,6 +200,7 @@ def main() -> None:
     parser.add_argument("--coordination", type=str, default="merit", choices=COORDINATIONS)
     parser.add_argument("--asynchronous", action="store_true", help="each robot runs its own cycles (step 9)")
     parser.add_argument("--paper", action="store_true", help="tree of Algorithm 1, each wheel limited on its own (step 10). The rule of turning in place stays, see the README")
+    parser.add_argument("--paper_strict", action="store_true", help="with --asynchronous, also commit only up to t + delta t, random first token, no bid reset (step 11)")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max_time", type=float, default=100.0, help="time of the run [s]")
     parser.add_argument("--save", type=str, default=None, help="save the last frame here instead of showing it")
@@ -200,11 +212,14 @@ def main() -> None:
     scene = args.scene if args.scene is not None else "open_10" if args.open_map else f"pillar_{args.robots}"
     start_states, goals, map_path = make_scene(scene)
     team_class = AsyncTeam if args.asynchronous else Team
+    options = dict(paper_strict=True) if args.paper_strict else {}
+    if args.paper_strict and not args.asynchronous:
+        parser.error("--paper_strict needs --asynchronous")
     team = team_class(
         start_states, goals, controller, coordination=args.coordination, map_path=map_path, seed=args.seed,
-        paper_tree=args.paper,
+        paper_tree=args.paper, **options,
     )
-    figure = TeamFigure(team, args.coordination, asynchronous=args.asynchronous)
+    figure = TeamFigure(team, args.coordination, asynchronous=args.asynchronous, paper_strict=args.paper_strict)
     writer = None
     if args.video is not None:
         # macro_block_size=2 keeps the figure size, yuv420p only needs even sizes

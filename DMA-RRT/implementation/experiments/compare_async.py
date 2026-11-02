@@ -4,6 +4,7 @@
     Run from DMA-RRT/implementation:
     python3 -m experiments.compare_async
     python3 -m experiments.compare_async --scenes open_10 --variants same_every async_every async_fast_better
+    python3 -m experiments.compare_async --paper_tree --clip_each_wheel --paper_strict --coordinations round_robin merit --variants timed_fast_better
 """
 
 from __future__ import annotations
@@ -50,20 +51,20 @@ DEFAULT_RUNS = (
 )
 
 
-def run_seed(args: Tuple[str, str, str, int, float, bool, bool, bool, float]) -> Dict:
+def run_seed(args: Tuple[str, str, str, int, float, bool, bool, bool, float, bool]) -> Dict:
     """
     One run of a team
     :param args: scene, coordination, variant, seed, time of the run [s], tree of Algorithm 1, can turn in place,
-        limit each wheel on its own, L1 [m]
+        limit each wheel on its own, L1 [m], paper_strict of AsyncTeam
     """
-    scene, coordination, variant, seed, max_time, paper_tree, can_turn, clip_each_wheel, lookahead = args
+    scene, coordination, variant, seed, max_time, paper_tree, can_turn, clip_each_wheel, lookahead, paper_strict = args
     same_phase, bid_interval, only_when_better, plan_for_a_cycle = VARIANTS[variant]
     controller = PurePursuit(SkidSteerModel(clip_each_wheel=clip_each_wheel), lookahead=lookahead)
     start_states, goals, map_path = make_scene(scene)
     team = AsyncTeam(
         start_states, goals, controller, coordination=coordination, map_path=map_path, seed=seed,
         same_phase=same_phase, bid_interval=bid_interval, bids_only_when_better=only_when_better,
-        plan_for_a_cycle=plan_for_a_cycle, paper_tree=paper_tree, can_turn=can_turn,
+        plan_for_a_cycle=plan_for_a_cycle, paper_tree=paper_tree, can_turn=can_turn, paper_strict=paper_strict,
     )
     agents = team.agents
     pairs = [(agent, other) for agent in agents for other in agents if other is not agent]
@@ -108,6 +109,7 @@ def main() -> None:
     parser.add_argument("--no_turning", action="store_true", help="never use the rule of turning in place, as in the paper")
     parser.add_argument("--clip_each_wheel", action="store_true", help="limit each wheel on its own, as stated in Sec. 7.1")
     parser.add_argument("--lookahead", type=float, default=1.5, help="L1, not given in the paper [m]")
+    parser.add_argument("--paper_strict", action="store_true", help="commit only up to t + delta t, random first token, no bid reset. Only merit and round_robin (step 11)")
     parser.add_argument("--workers", type=int, default=max(os.cpu_count() - 2, 1), help="number of processes")
     args = parser.parse_args()
 
@@ -126,7 +128,7 @@ def main() -> None:
                 runs = pool.map(
                     run_seed,
                     [
-                        (scene, coordination, variant, seed, args.max_time, args.paper_tree, not args.no_turning, args.clip_each_wheel, args.lookahead)
+                        (scene, coordination, variant, seed, args.max_time, args.paper_tree, not args.no_turning, args.clip_each_wheel, args.lookahead, args.paper_strict)
                         for seed in range(args.seeds)
                     ],
                 )

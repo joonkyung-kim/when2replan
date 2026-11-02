@@ -58,6 +58,7 @@ class Agent:
         grow_ignoring_others: bool = False,
         paper_tree: bool = False,
         can_turn: bool = True,
+        commit_one_cycle: bool = False,
         seed: int = 0,
     ) -> None:
         """
@@ -72,6 +73,7 @@ class Agent:
         :param grow_ignoring_others: grow the tree without the other robots (Algorithm 6 of the paper)
         :param paper_tree: grow the tree as in Algorithm 1 (PaperCLRRT), instead of our CLRRT
         :param can_turn: False never turns in place, as in the paper
+        :param commit_one_cycle: commit only up to the state at t + delta t, as in Algorithm 2
         :param seed: seed of this robot's planner
         """
         self.agent_id = agent_id
@@ -103,6 +105,7 @@ class Agent:
             samples_per_cycle=samples_per_cycle,
             can_turn=can_turn,
             stop_at_goal=False,
+            commit_one_cycle=commit_one_cycle,
         )
         self._other_robots: Dict[int, MovingObstacle] = {}
 

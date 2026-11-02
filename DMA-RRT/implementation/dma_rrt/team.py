@@ -47,6 +47,8 @@ class Team:
         stop_interval: float = 4.0,
         paper_tree: bool = False,
         can_turn: bool = True,
+        commit_one_cycle: bool = False,
+        random_first_token: bool = False,
     ) -> None:
         """
         :param start_states: start state of each robot
@@ -58,13 +60,19 @@ class Team:
         :param stop_interval: time between the emergency stop nodes of Cooperative DMA-RRT [s]
         :param paper_tree: grow the trees as in Algorithm 1 (PaperCLRRT), instead of our CLRRT
         :param can_turn: False never turns in place, as in the paper
+        :param commit_one_cycle: commit only up to the state at t + delta t, as in Algorithm 2. Not for Cooperative
+            DMA-RRT, whose emergency stop nodes are the nodes of the plan
+        :param random_first_token: the first token goes to a random robot, as in line 2 of Algorithm 4
         """
         if coordination not in COORDINATIONS:
             raise ValueError(f"coordination must be one of {COORDINATIONS}")
+        if commit_one_cycle and coordination.startswith("cooperative"):
+            raise ValueError("commit_one_cycle is not implemented for Cooperative DMA-RRT")
         self._coordination = coordination
         self._stop_interval = stop_interval
         self._paper_tree = paper_tree
         self._can_turn = can_turn
+        self._commit_one_cycle = commit_one_cycle
         self.agents = [
             self._make_agent(i, start_states[i], goals[i], controller, map_path, seed * 1000 + i)
             for i in range(len(start_states))
@@ -74,6 +82,8 @@ class Team:
                 if other_id != agent.agent_id:
                     agent.add_other_robot(other_id, start_state)
         self.token_holder = 0  # the paper selects it randomly, this keeps runs easy to compare
+        if random_first_token:
+            self.token_holder = int(np.random.default_rng(seed).integers(len(self.agents)))
         self.token_counts = [0] * len(self.agents)
         self.num_estops = 0
         self.estop_target = None  # robot asked to stop in the last cycle
@@ -83,7 +93,7 @@ class Team:
         if not self._coordination.startswith("cooperative"):
             return Agent(
                 agent_id, start_state, goals, controller, map_path=map_path, seed=seed,
-                paper_tree=self._paper_tree, can_turn=self._can_turn,
+                paper_tree=self._paper_tree, can_turn=self._can_turn, commit_one_cycle=self._commit_one_cycle,
             )
         return CooperativeAgent(
             agent_id,
