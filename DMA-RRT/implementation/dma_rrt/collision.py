@@ -13,6 +13,7 @@ from navigation_stack_py.utils import MapHandler
 
 REPO_DIR = Path(__file__).resolve().parents[3]
 SIXTEEN_PILLAR_MAP = "maps/sixteen_pillar/sixteen_pillar/map.yaml"
+COARSE_STRIDE = 10  # states of a moving obstacle's future skipped in the coarse check
 
 
 class MovingObstacle:
@@ -32,6 +33,24 @@ class MovingObstacle:
         self.start_time = start_time
         self.dt = dt
         self.radius = radius
+
+    def replace_from(self, start_time: float, states: np.ndarray) -> None:
+        """
+        Replace the trajectory from start_time on. The trajectory before it is not changed,
+        which is the part the other robot has already committed to
+        :param start_time: time of the first of the new states [s]
+        :param states: new states at start_time, start_time + dt, ... size: (N, 2 or more)
+        """
+        num_kept = int(round((start_time - self.start_time) / self.dt))
+        kept_times = self.start_time + self.dt * np.arange(num_kept)
+        self.positions = np.vstack((self.positions_at(kept_times), states[:, :2]))
+
+    def stopped_at(self, time: float) -> MovingObstacle:
+        """
+        :return: the same trajectory, with the obstacle stopping at the given time
+        """
+        num_kept = int(round((time - self.start_time) / self.dt)) + 1
+        return MovingObstacle(self.positions[:num_kept], self.start_time, self.dt, self.radius)
 
     def _indices(self, times: np.ndarray) -> np.ndarray:
         indices = np.round((times - self.start_time) / self.dt).astype(int)
@@ -114,11 +133,33 @@ class CollisionChecker:
         Check if the robot can stop at pos from time on and stay safe for all future time (eq. 7)
         A moving obstacle can come to this position later, even if it is free when the robot arrives
         """
+        return all(self._is_stop_safe_from(obstacle, pos, time) for obstacle in self.moving_obstacles)
+
+    def stop_safe_mask(self, positions: np.ndarray, times: np.ndarray) -> np.ndarray:
+        """
+        is_stop_safe for many positions. A coarse check finds the positions far from an obstacle's future,
+        and only the others need the exact check
+        :param positions: positions size: (N, 2)
+        :param times: time of each position size: (N,)
+        :return: mask size: (N,)
+        """
+        mask = np.ones(len(positions), dtype=bool)
         for obstacle in self.moving_obstacles:
-            dists = np.linalg.norm(obstacle.positions_from(time) - pos, axis=1)
-            if dists.min() - obstacle.radius < self.safe_dist:
-                return False
-        return True
+            future = obstacle.positions_from(times.min())
+            coarse = future[::COARSE_STRIDE]
+            margin = 0.0
+            if len(future) > 1:
+                max_step = np.linalg.norm(np.diff(future, axis=0), axis=1).max()
+                margin = COARSE_STRIDE * max_step
+            dists = np.linalg.norm(positions[:, np.newaxis] - coarse[np.newaxis], axis=2).min(axis=1)
+            is_near = dists - obstacle.radius < self.safe_dist + margin
+            for i in np.flatnonzero(is_near & mask):
+                mask[i] = self._is_stop_safe_from(obstacle, positions[i], times[i])
+        return mask
+
+    def _is_stop_safe_from(self, obstacle: MovingObstacle, pos: np.ndarray, time: float) -> bool:
+        dists = np.linalg.norm(obstacle.positions_from(time) - pos, axis=1)
+        return dists.min() - obstacle.radius >= self.safe_dist
 
     def is_free(self, pos: np.ndarray) -> bool:
         """

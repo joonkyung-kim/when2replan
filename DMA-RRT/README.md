@@ -31,9 +31,12 @@ change their plans at the same time, new plans can conflict even though each one
 | 2 | Tree expansion with closed-loop simulation | Algorithm 1, eq. 11-12 | Done |
 | 3 | Persistent tree, execution loop, lazy check | Algorithms 2-3 | Done |
 | 4 | Collision check against time-parameterized obstacles | Sec. 7.1, eq. 7 | Done |
-| 5 | Round-robin token with two robots | Sec. 7.2.1 baseline | Not started |
-| 6 | PPI bids (DMA-RRT) | Algorithms 4-5 | Not started |
-| 7 | Emergency stops (Cooperative DMA-RRT) | Algorithms 6-8 | Not started |
+| 5 | Round-robin token with two and four robots | Sec. 7.2.1 baseline, Theorem 1 | Done |
+| 6 | PPI bids (DMA-RRT) | Algorithms 4-5, Sec. 7.2 | Done |
+| 7 | Emergency stops (Cooperative DMA-RRT) | Algorithms 6-8 | Done, the paper's gain was not reproduced |
+| 8 | Checking the results against the paper: two fixes, the scenes of Fig. 4 and Fig. 7 | Sec. 7 | Done, DMA-RRT results agree in direction, emergency stops do not |
+| 9 | Each robot runs its own cycles on a virtual clock, frequent bids, bids only when better | Algorithms 4-5, Sec. 5.3 | Done on a virtual clock, not on separate computers. Results do not get closer to the paper |
+| 10 | The team with the tree of Algorithm 1 and each wheel limited on its own, and a check of the code against Algorithms 1-8 | Algorithms 1-8, Sec. 7.1 | Done. The turning rule stays, because a small `L1` removes the paper's smooth trajectories. The gain of emergency stops is still not reproduced, and nodes per plan are still far from Fig. 7 |
 
 See [implementation/README.md](implementation/README.md) for how to run the code, the design decisions, and the
 comparison between the paper's CL-RRT and ours.

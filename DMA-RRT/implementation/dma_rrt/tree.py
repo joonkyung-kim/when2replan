@@ -21,7 +21,7 @@ class Tree:
     def __init__(self, root_state: np.ndarray) -> None:
         root_state = np.asarray(root_state, dtype=float)
         self.nodes: List[Node] = [Node(root_state, None, 0.0)]
-        self._positions: np.ndarray = root_state[:2][np.newaxis]  # size: (num_nodes, 2)
+        self.positions: np.ndarray = root_state[:2][np.newaxis]  # size: (num_nodes, 2)
 
     def __len__(self) -> int:
         return len(self.nodes)
@@ -40,7 +40,7 @@ class Tree:
         """
         node = Node(state, parent, parent.cost + edge_cost)
         self.nodes.append(node)
-        self._positions = np.vstack((self._positions, state[:2]))
+        self.positions = np.vstack((self.positions, state[:2]))
         return node
 
     def reroot(self, node: Node) -> None:
@@ -69,20 +69,20 @@ class Tree:
 
     def _set_nodes(self, nodes: List[Node]) -> None:
         self.nodes = nodes
-        self._positions = np.array([n.state[:2] for n in nodes])
+        self.positions = np.array([n.state[:2] for n in nodes])
 
     def nearest(self, position: np.ndarray) -> Node:
         """
         Get the node closest to position in euclidean distance
         """
-        dists = np.linalg.norm(self._positions - position, axis=1)
+        dists = np.linalg.norm(self.positions - position, axis=1)
         return self.nodes[np.argmin(dists)]
 
     def k_nearest(self, position: np.ndarray, k: int) -> List[Node]:
         """
         Get the k nodes closest to position in euclidean distance, the closest first
         """
-        dists = np.linalg.norm(self._positions - position, axis=1)
+        dists = np.linalg.norm(self.positions - position, axis=1)
         return [self.nodes[i] for i in np.argsort(dists)[:k]]
 
     def nodes_to(self, node: Node) -> List[Node]:

@@ -26,6 +26,8 @@ from dma_rrt.collision import CollisionChecker
 from dma_rrt.dynamics import PurePursuit
 from dma_rrt.tree import Node
 
+MIN_PROGRESS = 1e-6  # [m]
+
 
 class PaperCLRRT(CLRRT):
     def __init__(
@@ -35,10 +37,13 @@ class PaperCLRRT(CLRRT):
         goal_radius: float = 1.0,
         goal_sample_rate: float = 0.0,
         num_nearest: int = 1,
+        select_ignoring_others: bool = False,
+        grow_ignoring_others: bool = False,
         seed: int = 0,
     ) -> None:
         """
         goal_sample_rate and num_nearest are only changed from the paper's values to compare their effects
+        select_ignoring_others and grow_ignoring_others are the same as in CLRRT
         """
         super().__init__(
             collision_checker,
@@ -47,8 +52,13 @@ class PaperCLRRT(CLRRT):
             goal_radius=goal_radius,
             goal_sample_rate=goal_sample_rate,
             num_nearest=num_nearest,
+            select_ignoring_others=select_ignoring_others,
+            grow_ignoring_others=grow_ignoring_others,
             seed=seed,
         )
+
+    def _times(self, times: np.ndarray):
+        return None if self._grow_ignoring_others else times
 
     def _extend(self, nearest_node: Node, waypoint: np.ndarray) -> CLRRTAttempt:
         """
@@ -69,7 +79,7 @@ class PaperCLRRT(CLRRT):
             v, delta_v = controller.control(current, target_pos)
             next_state = controller.model.step(current, v, delta_v, controller.dt)
             time = np.array([start_time + (step + 1) * controller.dt])
-            if self._collision_checker.find_first_unsafe(next_state[:2][np.newaxis], time) is not None:
+            if self._collision_checker.find_first_unsafe(next_state[:2][np.newaxis], self._times(time)) is not None:
                 unsafe_state = next_state
                 break
             states.append(next_state)
@@ -97,7 +107,7 @@ class PaperCLRRT(CLRRT):
             nearest_node.state, nearest_node.waypoint, final_waypoint
         )
         times = self.trajectory_times(start_time, len(trajectory))
-        is_unsafe = self._collision_checker.find_first_unsafe(trajectory[:, :2], times) is not None
+        is_unsafe = self._collision_checker.find_first_unsafe(trajectory[:, :2], self._times(times)) is not None
         if is_unsafe or not is_reached or len(trajectory) == 0:
             return failed
         return self._add_node(nearest_node, final_waypoint, trajectory)
@@ -110,7 +120,8 @@ class PaperCLRRT(CLRRT):
         """
         direction = (to_pos - from_pos) / np.linalg.norm(to_pos - from_pos)
         progress = np.dot(position - from_pos, direction)
-        if progress <= 0.0:
+        # a robot turning on the spot has made no progress, and from_pos + progress can round to from_pos itself
+        if progress <= MIN_PROGRESS:
             return None
         return from_pos + progress * direction
 

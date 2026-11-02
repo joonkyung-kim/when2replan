@@ -17,14 +17,24 @@ def wrap_angle(angle: float) -> float:
 
 
 class SkidSteerModel:
-    def __init__(self, wheel_base: float = 2.0, max_wheel_speed: float = 2.0) -> None:
+    def __init__(self, wheel_base: float = 2.0, max_wheel_speed: float = 2.0, clip_each_wheel: bool = False) -> None:
+        """
+        :param clip_each_wheel: limit each wheel on its own, which is all that Sec. 7.1 of the paper states. A large
+            steering command then lowers v down to 0, and the robot turns on the spot. False keeps the curvature
+        """
         self.wheel_base = wheel_base
         self.max_wheel_speed = max_wheel_speed
+        self.clip_each_wheel = clip_each_wheel
 
     def saturate(self, v: float, delta_v: float) -> Tuple[float, float]:
         """
         Slow down until both wheels are within the limit, the curvature of the motion stays the same
+        Or with clip_each_wheel, only limit the wheels above the limit
         """
+        if self.clip_each_wheel:
+            left = np.clip(v - 0.5 * delta_v, -self.max_wheel_speed, self.max_wheel_speed)
+            right = np.clip(v + 0.5 * delta_v, -self.max_wheel_speed, self.max_wheel_speed)
+            return 0.5 * (left + right), right - left
         max_speed = abs(v) + 0.5 * abs(delta_v)
         if max_speed <= self.max_wheel_speed:
             return v, delta_v

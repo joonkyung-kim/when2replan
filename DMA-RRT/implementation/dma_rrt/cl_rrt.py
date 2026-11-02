@@ -16,6 +16,9 @@ from dma_rrt.dynamics import PurePursuit
 from dma_rrt.tree import Node, Tree
 
 
+NO_GOAL_PENALTY = 1000.0  # [s] larger than the cost of any path
+
+
 class CLRRTAttempt(NamedTuple):
     nearest_node: Node
     waypoint: np.ndarray
@@ -40,6 +43,8 @@ class CLRRT:
         goal_sample_rate: float = 0.05,
         num_nearest: int = 5,
         time_to_go_weight: float = 2.0,
+        select_ignoring_others: bool = False,
+        grow_ignoring_others: bool = False,
         seed: int = 0,
     ) -> None:
         """
@@ -51,6 +56,8 @@ class CLRRT:
         :param num_nearest: number of the closest nodes to try for a sample. With only the closest node,
             a node that cannot go anywhere because of its heading keeps taking the samples around it
         :param time_to_go_weight: weight of the straight line time to the goal in the cost estimate
+        :param select_ignoring_others: select paths without the moving obstacles. The caller has to check them
+        :param grow_ignoring_others: grow the tree without the moving obstacles, as in line 4 of Algorithm 6
         :param seed: seed of the planner's own random generator
         """
         self._collision_checker = collision_checker
@@ -60,6 +67,8 @@ class CLRRT:
         self._goal_sample_rate = goal_sample_rate
         self._num_nearest = num_nearest
         self._time_to_go_weight = time_to_go_weight
+        self._select_ignoring_others = select_ignoring_others
+        self._grow_ignoring_others = grow_ignoring_others
         self._rng = np.random.default_rng(seed)
         self.tree: Tree = None
         self.root_time = 0.0
@@ -143,30 +152,45 @@ class CLRRT:
         A path has to end where the robot can stay safe for all future time (eq. 7).
         The root is only returned when there is no other node to end at, or the robot would never leave it.
         """
-        nodes = [
-            node
-            for node in self.tree.nodes
-            if self._collision_checker.is_stop_safe(node.state[:2], self.node_time(node))
-        ]
-        goal_nodes = [node for node in nodes if self.is_in_goal(node, goal_pos)]
-        if len(goal_nodes) > 0:
-            return min(goal_nodes, key=lambda node: node.cost)
+        positions = self.tree.positions
+        costs = np.array([node.cost for node in self.tree.nodes])
+        times = self.root_time + costs - self.tree.root.cost
+        if self._select_ignoring_others:
+            is_stop_safe = np.ones(len(positions), dtype=bool)
+        else:
+            is_stop_safe = self._collision_checker.stop_safe_mask(positions, times)
+        dists = np.linalg.norm(positions - goal_pos, axis=1)
 
-        nodes = [node for node in nodes if node is not self.tree.root]
-        if len(nodes) == 0:
-            return self.tree.root
-        return min(nodes, key=lambda node: self.cost_estimate(node, goal_pos))
+        is_candidate = is_stop_safe & (dists <= self._goal_radius)
+        scores = costs
+        if not is_candidate.any():
+            is_candidate = is_stop_safe.copy()
+            is_candidate[0] = False  # the root
+            if not is_candidate.any():
+                return self.tree.root
+            scores = costs + self._time_to_go_weight * dists / self._controller.speed
+        indices = np.flatnonzero(is_candidate)
+        return self.tree.nodes[indices[np.argmin(scores[indices])]]
 
     def cost_estimate(self, node: Node, goal_pos: np.ndarray) -> float:
         """
-        Estimated travel time to the goal through node
+        Estimated travel time to the goal through node, comparable with the selection of best_node
         The straight line is weighted because it is a lower bound of the time to go, which would make
-        any path look worse than a shorter part of it
+        any path look worse than a shorter part of it.
+        A path not reaching the goal has a penalty, since a path reaching the goal is always preferred. Without it,
+        the optimistic straight line makes a stopped robot bid less than 0 for a winding path to its goal,
+        and it never gets the token. Between two such paths, the penalty cancels out.
         """
         if self.is_in_goal(node, goal_pos):
             return node.cost
         time_to_go = np.linalg.norm(node.state[:2] - goal_pos) / self._controller.speed
-        return node.cost + self._time_to_go_weight * time_to_go
+        return node.cost + self._time_to_go_weight * time_to_go + NO_GOAL_PENALTY
+
+    def finish_time_estimate(self, node: Node, goal_pos: np.ndarray) -> float:
+        """
+        cost_estimate as a time on the clock shared by the robots, since the costs of two trees are not comparable
+        """
+        return self.cost_estimate(node, goal_pos) - self.tree.root.cost + self.root_time
 
     def lazy_check(self, node: Node) -> bool:
         """
@@ -179,7 +203,7 @@ class CLRRT:
             trajectory, _ = self._controller.simulate_segment(
                 parent.state, parent.waypoint, path_node.waypoint
             )
-            times = self.trajectory_times(self.node_time(parent), len(trajectory))
+            times = None if self._select_ignoring_others else self.trajectory_times(self.node_time(parent), len(trajectory))
             if self._collision_checker.find_first_unsafe(trajectory[:, :2], times) is not None:
                 self.tree.remove_subtree(path_node)
                 return False
@@ -193,16 +217,24 @@ class CLRRT:
         nodes = self.tree.nodes_to(node)
         return np.vstack([nodes[0].state[np.newaxis]] + [n.trajectory for n in nodes[1:]])
 
-    def simulate_waypoints(self, start_state: np.ndarray, waypoints: List[np.ndarray]) -> np.ndarray:
+    def simulate_waypoints(
+        self,
+        start_state: np.ndarray,
+        waypoints: List[np.ndarray],
+        from_pos: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
         """
         Reproduce a trajectory from the initial state and the waypoints
-        :param start_state: initial state, the reference starts from its position
+        :param start_state: initial state
         :param waypoints: waypoints after the initial state
+        :param from_pos: where the reference starts, the position of start_state by default.
+            A robot starting from a node has to use that node's waypoint
         :return: states including start_state size: (N, 3)
         """
         states = [np.asarray(start_state, dtype=float)[np.newaxis]]
         current = states[0][0]
-        from_pos = current[:2]
+        if from_pos is None:
+            from_pos = current[:2]
         for waypoint in waypoints:
             segment, _ = self._controller.simulate_segment(current, from_pos, waypoint)
             states.append(segment)
@@ -241,7 +273,7 @@ class CLRRT:
         trajectory, is_reached = self._controller.simulate_segment(
             nearest_node.state, nearest_node.waypoint, waypoint
         )
-        times = self.trajectory_times(self.node_time(nearest_node), len(trajectory))
+        times = None if self._grow_ignoring_others else self.trajectory_times(self.node_time(nearest_node), len(trajectory))
         collision_pos = self._collision_checker.find_first_unsafe(trajectory[:, :2], times)
         # a node needs at least one state of its own
         if collision_pos is not None or not is_reached or len(trajectory) == 0:
