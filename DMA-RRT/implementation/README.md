@@ -56,29 +56,46 @@ Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, s
 | `experiments/compare_team.py` | Comparison of emergency stops, bids, the round-robin token, and no coordination |
 | `experiments/compare_async.py` | Comparison of the timing variants of `AsyncTeam` |
 
+## Videos and figures
+
+The demos write to `outputs/`, which is not in git. The folders sort them by how close the algorithm is to the paper:
+
+| Folder | Content | Against the paper |
+|---|---|---|
+| `1_basic_rrt/` | Basic RRT (steps 0-1) | Not the paper's algorithm |
+| `2_single_robot/` | One robot: CL-RRT planning once, and the execution loop (steps 2-4) | Only `cl_rrt_paper.mp4` grows the tree as in Algorithm 1. The others use our tree |
+| `3_team_our_tree/` | Teams with our tree (steps 8-9) | Algorithm 1 differs |
+| `4_team_paper_tree/` | Teams with the paper's tree, each wheel limited on its own, `L1 = 1.5 m` (step 10) | Algorithm 1 as in the paper. Algorithms 2 and 4 differ, see step 11 |
+| `5_team_paper_strict/` | The same with `--paper_strict`, `merit` (step 11) | Algorithms 1-5 as in the paper, with the differences listed in step 11 |
+| `6_team_paper_strict_our_rrt/` | The same as `5_team_paper_strict/`, but the trees grow with our CL-RRT (`--our_rrt`) | Algorithms 2-5 as in the paper, Algorithm 1 differs (see "Paper's CL-RRT and ours") |
+| `not_paper/` | Earlier versions we no longer consider close to the paper: the first teams, emergency stops, `L1 = 0.3 m` | Differ in several ways |
+
 ## Running
 
 ```bash
-python3 -m demos.demo_rrt --save outputs/rrt.png
-python3 -m demos.demo_rrt --map maps/white/white/map.yaml --start 2 2 --goal 18 18 --save outputs/rrt_empty.png   # no obstacles
-python3 -m demos.visualize_rrt_steps --video outputs/rrt_steps.mp4
+mkdir -p outputs/{1_basic_rrt,2_single_robot,3_team_our_tree,4_team_paper_tree,5_team_paper_strict,6_team_paper_strict_our_rrt,not_paper}
 
-python3 -m demos.demo_cl_rrt --video outputs/cl_rrt.mp4
-python3 -m demos.demo_cl_rrt --paper --video outputs/cl_rrt_paper.mp4
+python3 -m demos.demo_rrt --save outputs/1_basic_rrt/rrt.png
+python3 -m demos.demo_rrt --map maps/white/white/map.yaml --start 2 2 --goal 18 18 --save outputs/1_basic_rrt/rrt_empty.png   # no obstacles
+python3 -m demos.visualize_rrt_steps --video outputs/1_basic_rrt/rrt_steps.mp4
 
-python3 -m demos.demo_execution --video outputs/execution.mp4
-python3 -m demos.demo_execution --no_obstacle --save outputs/execution.png
-python3 -m demos.demo_execution --moving --no_obstacle --video outputs/moving.mp4
+python3 -m demos.demo_cl_rrt --video outputs/2_single_robot/cl_rrt.mp4
+python3 -m demos.demo_cl_rrt --paper --video outputs/2_single_robot/cl_rrt_paper.mp4
+python3 -m demos.demo_execution --video outputs/2_single_robot/execution.mp4
+python3 -m demos.demo_execution --no_obstacle --save outputs/2_single_robot/execution.png
+python3 -m demos.demo_execution --moving --no_obstacle --video outputs/2_single_robot/moving.mp4
 
-python3 -m demos.demo_team --video outputs/team.mp4
-python3 -m demos.demo_team --robots 8 --video outputs/team8.mp4
-python3 -m demos.demo_team --open_map --video outputs/team_open.mp4
-python3 -m demos.demo_team --coordination cooperative --video outputs/team_cooperative.mp4
-python3 -m demos.demo_team --scene hallway_2 --video outputs/team_hallway.mp4
-python3 -m demos.demo_team --scene four_agents_4 --coordination cooperative --video outputs/team_four_agents_cooperative.mp4
-python3 -m demos.demo_team --scene open_10 --asynchronous --video outputs/team_async_open_10.mp4
-python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --video outputs/team_paper_four_agents_4.mp4
-python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/team_strict_four_agents_4.mp4
+python3 -m demos.demo_team --scene hallway_2 --video outputs/3_team_our_tree/team_hallway.mp4
+python3 -m demos.demo_team --scene open_10 --asynchronous --video outputs/3_team_our_tree/team_async_open_10.mp4
+python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --video outputs/4_team_paper_tree/team_paper_four_agents_4.mp4
+python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/5_team_paper_strict/team_strict_four_agents_4.mp4
+python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --our_rrt --coordination merit --video outputs/6_team_paper_strict_our_rrt/team_strict_our_rrt_four_agents_4.mp4
+
+python3 -m demos.demo_team --video outputs/not_paper/team.mp4
+python3 -m demos.demo_team --robots 8 --video outputs/not_paper/team8.mp4
+python3 -m demos.demo_team --open_map --video outputs/not_paper/team_open.mp4
+python3 -m demos.demo_team --coordination cooperative --video outputs/not_paper/team_cooperative.mp4
+python3 -m demos.demo_team --scene four_agents_4 --coordination cooperative --video outputs/not_paper/team_four_agents_cooperative.mp4
 
 python3 -m experiments.compare_cl_rrt     # takes a few minutes
 python3 -m experiments.compare_execution  # takes longer, because robots that get stuck run until the time limit
@@ -233,6 +250,13 @@ and the robot stays there. When the robot is stopped and its tree got fewer than
 1 rad/s and starts a new tree. This is always safe for a circular robot, which occupies the same space while turning.
 The first version only turned when the tree had nothing but the root, which misses a tree with a few useless nodes (step 8).
 Step 10 shows that a small `L1` could replace this rule, but then the trajectories are no longer smooth as in the paper, so we keep the rule.
+
+**When the turn happens.** The robot decides to turn at the end of a cycle, from how much its tree grew in that cycle. It then
+turns in the next cycle: the turn is its committed path, and the new tree grows from the state at the end of the turn, like
+any root at `t + Δt` in Algorithm 2. Until step 11 the turn was applied to the cycle that had just ended, so the robot gained
+the time of the turn, and the asynchronous videos showed the heading jumping by 1 rad at the end of a cycle. The results of
+steps 3-9 were measured that way and were not measured again. The main results of steps 10 and 11 (the tables of goals
+per robot) are measured again with the turn in the next cycle. The other tables of steps 10 and 11 are not.
 
 ### The new obstacle is our test, not part of the paper
 
@@ -810,25 +834,26 @@ The figure is one snapshot, so this is not a measurement of the paper. Still, ou
 ### Results
 
 24 seeds, 600 s, `timed_fast_better`, the paper's tree, each wheel limited on its own, `L1 = 1.5 m`, and the turning rule. This is the setup closest to the paper, with the differences above.
+Measured again after the turn in place was moved to the next cycle (step 11, see "Turning in place"). The values before are in the last column.
 
-| Scene | Coordination | Goals per robot | 95% interval | Longest stop in a run, median / max | Emergency stops |
-|---|---|---|---|---|---|
-| `hallway_2` | `round_robin` | 9.12 | [8.82, 9.43] | 6 / 11 s | 0 |
-| `hallway_2` | `merit` | 9.12 | [8.82, 9.43] | 6 / 11 s | 0 |
-| `hallway_2` | `cooperative` | 8.40 | [7.96, 8.83] | 21 / 56 s | 108 |
-| `hallway_2` | `cooperative_paper` | 2.12 | [1.56, 2.69] | 461 / 569 s | 39 |
-| `four_agents_4` | `round_robin` | 3.49 | [3.34, 3.64] | 22 / 87 s | 0 |
-| `four_agents_4` | `merit` | 3.54 | [3.33, 3.76] | 21 / 49 s | 0 |
-| `four_agents_4` | `cooperative` | 3.68 | [3.52, 3.84] | 41 / 106 s | 166 |
-| `four_agents_4` | `cooperative_paper` | 0.90 | [0.68, 1.12] | 536 / 594 s | 63 |
-| `open_10` | `round_robin` | 8.47 | [8.32, 8.62] | 19 / 30 s | 0 |
-| `open_10` | `merit` | 9.12 | [8.92, 9.31] | 57 / 72 s | 0 |
-| `open_10` | `cooperative` | 9.05 | [8.84, 9.25] | 99 / 160 s | 664 |
-| `open_10` | `cooperative_paper` | 0.59 | [0.49, 0.69] | 600 / 600 s | 22 |
+| Scene | Coordination | Goals per robot | 95% interval | Longest stop in a run, median / max | Emergency stops | Before the turn fix |
+|---|---|---|---|---|---|---|
+| `hallway_2` | `round_robin` | 9.38 | [9.10, 9.65] | 8 / 13 s | 0 | 9.12 |
+| `hallway_2` | `merit` | 9.38 | [9.10, 9.65] | 8 / 13 s | 0 | 9.12 |
+| `hallway_2` | `cooperative` | 8.31 | [7.82, 8.81] | 20 / 59 s | 124 | 8.40 |
+| `hallway_2` | `cooperative_paper` | 2.50 | [1.65, 3.35] | 487 / 569 s | 46 | 2.12 |
+| `four_agents_4` | `round_robin` | 3.27 | [3.08, 3.46] | 24 / 60 s | 0 | 3.49 |
+| `four_agents_4` | `merit` | 3.60 | [3.44, 3.77] | 27 / 58 s | 0 | 3.54 |
+| `four_agents_4` | `cooperative` | 3.31 | [3.09, 3.54] | 40 / 129 s | 150 | 3.68 |
+| `four_agents_4` | `cooperative_paper` | 1.06 | [0.79, 1.33] | 530 / 594 s | 81 | 0.90 |
+| `open_10` | `round_robin` | 8.60 | [8.47, 8.74] | 20 / 31 s | 0 | 8.47 |
+| `open_10` | `merit` | 9.25 | [9.01, 9.49] | 57 / 109 s | 0 | 9.12 |
+| `open_10` | `cooperative` | 8.87 | [8.62, 9.12] | 105 / 183 s | 606 | 9.05 |
+| `open_10` | `cooperative_paper` | 0.59 | [0.49, 0.69] | 600 / 600 s | 22 | 0.59 |
 
 **Safety.** All 12 settings had 0 conflicts in about 173,000 plans, 0 wrong beliefs in about 60 million, and a minimum distance of 2.100 m between centers, which is the limit. `round_robin` and `merit` are identical on `hallway_2`, because with two robots the token can only go to the other robot.
 
-For comparison, the same seeds without the turning rule and with `L1 = 0.3 m`, which we no longer consider close to the paper, on the paper's tree and then on ours:
+For comparison, the same seeds (measured before the turn fix, which does not matter here) without the turning rule and with `L1 = 0.3 m`, which we no longer consider close to the paper, on the paper's tree and then on ours:
 
 | Scene | Coordination | Paper's tree | Our tree |
 |---|---|---|---|
@@ -847,18 +872,22 @@ For comparison, the same seeds without the turning rule and with `L1 = 0.3 m`, w
 ### How to read the results
 
 - **`merit` gains less than in the paper.** +8% on `open_10`, with intervals that do not overlap.
-- **Emergency stops are no longer clearly worse on the paper's scene.** `cooperative` is 4% above `merit` on `four_agents_4`, the paper's direction, but the intervals overlap, so this is not a measured gain. It is also not the method of the paper: see 11 in the table above.
+- **With four robots, `merit` gains 10%, where the paper has none.** The intervals touch (3.46 and 3.44), so the gain is not
+  clear. Before the turn fix it was +1%.
+- **Emergency stops do not gain on the paper's scene.** `cooperative` is 8% below `merit` on `four_agents_4`, with intervals
+  that overlap. Before the turn fix it was 4% above, also overlapping, so neither shows the paper's gain. `cooperative` is
+  also not the method of the paper: see 11 in the table above.
 - **`cooperative_paper`, the closest to Algorithm 6, still reaches very few goals**, with stops of up to 600 s.
-- **On `hallway_2`, emergency stops still cost goals**, 9.12 to 8.40, and `merit` shows no deadlock.
+- **On `hallway_2`, emergency stops still cost goals**, 9.38 to 8.31, and `merit` shows no deadlock.
 - **The turning rule is one possible reason for the missing deadlock.** It frees a stopped robot, which the paper does not describe.
 
 ### Against the paper, after this step
 
 | Result | Paper | Closest setup | Verdict |
 |---|---|---|---|
-| Ten robots, open map: `round_robin` to `merit` | +21% (12.5 to 15.1) | +8% (8.47 to 9.12) | Same direction, smaller gain |
-| Four robots with obstacles: `round_robin` to `merit` | 0% (11.9 to 11.9) | +1% (3.49 to 3.54), overlapping | Reproduced |
-| Four robots with obstacles: `merit` to cooperative | +9% (11.9 to 13.0) | +4% with `cooperative`, overlapping. -75% with `cooperative_paper` | Not reproduced |
+| Ten robots, open map: `round_robin` to `merit` | +21% (12.5 to 15.1) | +8% (8.60 to 9.25) | Same direction, smaller gain |
+| Four robots with obstacles: `round_robin` to `merit` | 0% (11.9 to 11.9) | +10% (3.27 to 3.60), intervals touch | Unclear: small or no gain |
+| Four robots with obstacles: `merit` to cooperative | +9% (11.9 to 13.0) | -8% with `cooperative`, overlapping. -71% with `cooperative_paper` | Not reproduced |
 | Fig. 4: DMA-RRT stuck at a hallway, cooperation solves it | Solved by emergency stops | No deadlock without them, fewer goals with them | Not reproduced |
 
 ### Why the robots take so long to reach their goals
@@ -896,7 +925,7 @@ This step makes DMA-RRT (`merit`) and the round-robin token usable as a baseline
 
 ```bash
 python3 -m experiments.compare_async --paper_tree --clip_each_wheel --paper_strict --coordinations round_robin merit --variants timed_fast_better
-python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/team_strict_four_agents_4.mp4
+python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/5_team_paper_strict/team_strict_four_agents_4.mp4
 ```
 
 `--paper_strict` (`AsyncTeam(paper_strict=True)`) changes three things, all off by default:
@@ -938,22 +967,65 @@ Step 10 found trips of 1.5 to 1.7 times the straight line for one robot alone, a
 ### Results
 
 24 seeds, 600 s, `timed_fast_better`, the paper's tree, each wheel limited on its own, `L1 = 1.5 m`, and the turning rule. Step 10 is the same without `--paper_strict`.
+Both are measured with the turn in place in the next cycle.
 
 | Scene | Coordination | Goals per robot, step 10 | Goals per robot, `--paper_strict` | 95% interval | Longest stop in a run, median / max |
 |---|---|---|---|---|---|
-| `hallway_2` | `round_robin` | 9.12 | 9.17 | [8.80, 9.54] | 6 / 10 s |
-| `hallway_2` | `merit` | 9.12 | 9.17 | [8.80, 9.54] | 6 / 10 s |
-| `four_agents_4` | `round_robin` | 3.49 | 3.60 | [3.39, 3.82] | 20 / 68 s |
-| `four_agents_4` | `merit` | 3.54 | 3.78 | [3.62, 3.94] | 28 / 58 s |
-| `open_10` | `round_robin` | 8.47 | 8.24 | [8.08, 8.39] | 20 / 28 s |
-| `open_10` | `merit` | 9.12 | 9.15 | [8.98, 9.32] | 54 / 91 s |
+| `hallway_2` | `round_robin` | 9.38 | 9.21 | [8.88, 9.54] | 8 / 14 s |
+| `hallway_2` | `merit` | 9.38 | 9.21 | [8.88, 9.54] | 8 / 14 s |
+| `four_agents_4` | `round_robin` | 3.27 | 3.38 | [3.16, 3.59] | 21 / 48 s |
+| `four_agents_4` | `merit` | 3.60 | 3.73 | [3.56, 3.90] | 29 / 89 s |
+| `open_10` | `round_robin` | 8.60 | 8.25 | [8.12, 8.39] | 20 / 28 s |
+| `open_10` | `merit` | 9.25 | 9.16 | [8.94, 9.37] | 62 / 121 s |
 
 **Safety.** All 6 settings had 0 conflicts in about 86,000 plans, 0 wrong beliefs in about 30 million, and a minimum distance of 2.100 m between centers, the limit.
 
 | Result | Paper | Step 10 | `--paper_strict` |
 |---|---|---|---|
 | Ten robots, open map: `round_robin` to `merit` | +21% | +8% | +11%, intervals do not overlap |
-| Four robots with obstacles: `round_robin` to `merit` | 0% | +1% | +5%, intervals overlap |
+| Four robots with obstacles: `round_robin` to `merit` | 0% | +10%, intervals touch | +10%, intervals overlap a little |
+
+Before the turn fix, `--paper_strict` gave +11% and +5%.
+
+### `--paper_strict` with our CL-RRT
+
+Algorithms 2-5 as above, but the trees grow with our `CLRRT` instead of Algorithm 1. Everything else is the same,
+including each wheel limited on its own. The videos are in `outputs/6_team_paper_strict_our_rrt/`.
+
+```bash
+python3 -m experiments.compare_async --clip_each_wheel --paper_strict --coordinations round_robin merit --variants timed_fast_better --scenes hallway_2 four_agents_4 open_10
+python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --our_rrt --coordination merit --video outputs/6_team_paper_strict_our_rrt/team_strict_our_rrt_four_agents_4.mp4
+```
+
+The split of step 11 is exact with our tree too: in 1906 splits over 6 runs of 120 s, the future states did not change, and every
+plan was reproduced from its waypoints.
+
+24 seeds, 600 s, the same setup as the results above, with the turn in place in the next cycle:
+
+| Scene | Coordination | Goals per robot, paper's tree | Goals per robot, our tree | 95% interval, our tree | Longest stop in a run, median / max |
+|---|---|---|---|---|---|
+| `hallway_2` | `round_robin` | 9.21 | 11.42 | [11.22, 11.62] | 6 / 8 s |
+| `hallway_2` | `merit` | 9.21 | 11.42 | [11.22, 11.62] | 6 / 8 s |
+| `four_agents_4` | `round_robin` | 3.38 | 4.98 | [4.72, 5.23] | 19 / 98 s |
+| `four_agents_4` | `merit` | 3.73 | 5.05 | [4.83, 5.28] | 28 / 175 s |
+| `open_10` | `round_robin` | 8.25 | 9.59 | [9.43, 9.75] | 20 / 38 s |
+| `open_10` | `merit` | 9.16 | 11.12 | [10.97, 11.28] | 34 / 62 s |
+
+**Safety.** The same as with the paper's tree: 0 conflicts in about 86,000 plans, 0 wrong beliefs in about 30 million, and a
+minimum distance of 2.100 m.
+
+| Result | Paper | Paper's tree, `--paper_strict` | Our tree, `--paper_strict` |
+|---|---|---|---|
+| Ten robots, open map: `round_robin` to `merit` | +21% | +11%, intervals do not overlap | +16%, intervals do not overlap |
+| Four robots with obstacles: `round_robin` to `merit` | 0% | +10%, intervals overlap a little | +1%, intervals overlap |
+
+- **Our tree reaches 16-47% more goals** in every setting. The trips are shorter (1.62 against 1.85 times the straight line
+  on `four_agents`, see above), and the tree reaches the goal more reliably (step 2).
+- **The gain of `merit` is closer to the paper with our tree**: larger on the open map, and about none with four robots.
+- **One run of `four_agents_4` with `merit` had a stop of 175 s.** We did not look into it. The median is about the same as
+  with the paper's tree.
+- With our tree, Algorithm 1 is the difference to state. Our tree tries up to 5 nodes per sample, samples the goal 5% of the
+  time, limits the reference to 2 m, and drops a trajectory that hits an obstacle (see "Paper's CL-RRT and ours").
 
 ### What is left, to state when using this baseline
 

@@ -6,9 +6,9 @@
 
     Run from DMA-RRT/implementation:
     python3 -m demos.demo_cl_rrt
-    python3 -m demos.demo_cl_rrt --seed 1 --save outputs/cl_rrt.png
-    python3 -m demos.demo_cl_rrt --video outputs/cl_rrt.mp4
-    python3 -m demos.demo_cl_rrt --paper --video outputs/cl_rrt_paper.mp4  # Algorithm 1 of the paper as written
+    python3 -m demos.demo_cl_rrt --seed 1 --save outputs/2_single_robot/cl_rrt.png
+    python3 -m demos.demo_cl_rrt --video outputs/2_single_robot/cl_rrt.mp4
+    python3 -m demos.demo_cl_rrt --paper --video outputs/2_single_robot/cl_rrt_paper.mp4  # Algorithm 1 of the paper as written
 """
 
 from __future__ import annotations

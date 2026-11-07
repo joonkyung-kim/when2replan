@@ -37,7 +37,7 @@ change their plans at the same time, new plans can conflict even though each one
 | 8 | Checking the results against the paper: two fixes, the scenes of Fig. 4 and Fig. 7 | Sec. 7 | Done, DMA-RRT results agree in direction, emergency stops do not |
 | 9 | Each robot runs its own cycles on a virtual clock, frequent bids, bids only when better | Algorithms 4-5, Sec. 5.3 | Done on a virtual clock, not on separate computers. Results do not get closer to the paper |
 | 10 | The team with the tree of Algorithm 1 and each wheel limited on its own, and a check of the code against Algorithms 1-8 | Algorithms 1-8, Sec. 7.1 | Done. The turning rule stays, because a small `L1` removes the paper's smooth trajectories. The gain of emergency stops is still not reproduced, and nodes per plan are still far from Fig. 7 |
-| 11 | DMA-RRT as a baseline: why one robot takes a long way, and `--paper_strict` for the differences the paper specifies | Algorithms 2 and 4 | Done for `merit` and `round_robin`. Long trips come from RRT itself. Emergency stops are not part of the baseline |
+| 11 | DMA-RRT as a baseline: why one robot takes a long way, and `--paper_strict` for the differences the paper specifies | Algorithms 2 and 4 | Done for `merit` and `round_robin`. Long trips come from RRT itself. Emergency stops are not part of the baseline. The turn in place now happens in the cycle after it is decided |
 
 See [implementation/README.md](implementation/README.md) for how to run the code, the design decisions, and the
 comparison between the paper's CL-RRT and ours.

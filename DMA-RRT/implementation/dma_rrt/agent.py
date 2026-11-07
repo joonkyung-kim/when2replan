@@ -174,7 +174,8 @@ class Agent:
         The end of a cycle, also used when the tree grows between messages (Asynchronous DMA-RRT)
         """
         result = self.executor.end_cycle(can_change_plan=has_token)
-        if len(self.executor.committed_states) == 0 and len(self.executor.plan_nodes) == 1:
+        # a robot about to turn in place is still waiting, its turn is committed for the next cycle
+        if result.is_turning or (len(self.executor.committed_states) == 0 and len(self.executor.plan_nodes) == 1):
             self.waiting_time += self.executor.steps_per_cycle * self._controller.dt
         else:
             self.waiting_time = 0.0

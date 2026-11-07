@@ -3,8 +3,8 @@
 
     Run from DMA-RRT/implementation:
     python3 -m demos.demo_rrt
-    python3 -m demos.demo_rrt --seed 1 --use_all_samples --save outputs/rrt.png
-    python3 -m demos.demo_rrt --video outputs/rrt.mp4
+    python3 -m demos.demo_rrt --seed 1 --use_all_samples --save outputs/1_basic_rrt/rrt.png
+    python3 -m demos.demo_rrt --video outputs/1_basic_rrt/rrt.mp4
     python3 -m demos.demo_rrt --map maps/white/white/map.yaml  # without obstacles
 """
 

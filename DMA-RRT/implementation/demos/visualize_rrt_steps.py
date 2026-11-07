@@ -5,7 +5,7 @@
     and the last iteration, which reaches the goal, are slow again.
 
     Run from DMA-RRT/implementation:
-    python3 -m demos.visualize_rrt_steps --video outputs/rrt_steps.mp4
+    python3 -m demos.visualize_rrt_steps --video outputs/1_basic_rrt/rrt_steps.mp4
 """
 
 from __future__ import annotations
@@ -303,7 +303,7 @@ class StepVisualizer:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--video", type=str, default="outputs/rrt_steps.mp4")
+    parser.add_argument("--video", type=str, default="outputs/1_basic_rrt/rrt_steps.mp4")
     parser.add_argument("--map", type=str, default=SIXTEEN_PILLAR_MAP, help="map yaml file, relative to the repo root")
     parser.add_argument("--start", type=float, nargs=2, default=[1.0, 1.0])
     parser.add_argument("--goal", type=float, nargs=2, default=[24.0, 24.0])

@@ -28,7 +28,7 @@ class CycleResult(NamedTuple):
     num_lazy_removed: int  # paths removed by the lazy check in this cycle
     is_safety_stop: bool  # the committed path became unsafe and the robot stopped
     is_path_changed: bool  # the robot's plan changed in this cycle
-    is_turning: bool  # the robot was stopped with nowhere to go and turned in place
+    is_turning: bool  # the robot was stopped with nowhere to go, and turns in place in the next cycle
 
 
 class CLRRTExecutor:
@@ -95,7 +95,7 @@ class CLRRTExecutor:
     def state_at(self, time: float) -> np.ndarray:
         """
         :param time: time in the current cycle [s]
-        :return: state of the robot at that time. A robot turning in place only gets its new yaw at the end of the cycle
+        :return: state of the robot at that time
         """
         num_steps = min(int(round((time - self.time) / self._dt)), len(self.committed_states))
         return self.committed_states[num_steps - 1] if num_steps > 0 else self.state
@@ -151,7 +151,9 @@ class CLRRTExecutor:
         is_turning = (
             self._can_turn and is_stopped and (len(self._planner.tree) == 1 or tree_growth < self._min_tree_growth)
         )
-        executed_states = self._turn_in_place() if is_turning else self._move()
+        executed_states = self._move()
+        if is_turning:
+            self._turn_in_place()
         return CycleResult(executed_states, num_lazy_removed, is_safety_stop, is_path_changed, is_turning)
 
     def change_plan(self) -> Tuple[int, bool]:
@@ -242,11 +244,13 @@ class CLRRTExecutor:
         self.plan_nodes.insert(1, middle)
         return middle
 
-    def _turn_in_place(self) -> np.ndarray:
+    def _turn_in_place(self) -> None:
         """
         Not in the paper. A stopped robot can have almost no feasible path because of its heading, like when
         it faces a pillar or a wall, and its tree would stop growing. A skid-steer robot can turn in place,
         and a circular robot occupies the same space while turning, so this is always safe.
+        The robot decides this at the end of a cycle, so it turns in the next cycle: the turn becomes the committed
+        path, and the new tree grows from the state at the end of the turn, as any root at t + delta t in Algorithm 2
         """
         model = self._controller.model
         delta_v = self._turn_rate * model.wheel_base
@@ -255,11 +259,9 @@ class CLRRTExecutor:
         for _ in range(self.steps_per_cycle):
             state = model.step(state, 0.0, delta_v, self._dt)
             states.append(state)
-        self.state = state
-        self.time += self.steps_per_cycle * self._dt
-        self._planner.reset(self.state, self.time)
+        self.committed_states = np.array(states)
+        self._planner.reset(state, self.time + self.steps_per_cycle * self._dt)
         self.plan_nodes = [self._planner.tree.root]
-        return np.array(states)
 
     def _move(self) -> np.ndarray:
         """

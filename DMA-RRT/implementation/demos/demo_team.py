@@ -2,15 +2,16 @@
     A team of robots planning with their own trees and sharing their plans
 
     Run from DMA-RRT/implementation:
-    python3 -m demos.demo_team --video outputs/team.mp4
-    python3 -m demos.demo_team --robots 8 --video outputs/team8.mp4
-    python3 -m demos.demo_team --open_map --video outputs/team_open.mp4  # ten robots
-    python3 -m demos.demo_team --coordination round_robin --video outputs/team_rr.mp4
-    python3 -m demos.demo_team --coordination cooperative --video outputs/team_cooperative.mp4
-    python3 -m demos.demo_team --scene hallway_2 --coordination cooperative --video outputs/team_hallway.mp4
-    python3 -m demos.demo_team --open_map --asynchronous --video outputs/team_async_open.mp4
-    python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --coordination merit --video outputs/team_paper_four_agents.mp4
-    python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/team_strict_four_agents.mp4
+    python3 -m demos.demo_team --video outputs/not_paper/team.mp4
+    python3 -m demos.demo_team --robots 8 --video outputs/not_paper/team8.mp4
+    python3 -m demos.demo_team --open_map --video outputs/not_paper/team_open.mp4  # ten robots
+    python3 -m demos.demo_team --coordination round_robin --video outputs/not_paper/team_rr.mp4
+    python3 -m demos.demo_team --coordination cooperative --video outputs/not_paper/team_cooperative.mp4
+    python3 -m demos.demo_team --scene hallway_2 --coordination cooperative --video outputs/not_paper/team_hallway_cooperative.mp4
+    python3 -m demos.demo_team --open_map --asynchronous --video outputs/3_team_our_tree/team_async_open.mp4
+    python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --coordination merit --video outputs/4_team_paper_tree/team_paper_four_agents.mp4
+    python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --coordination merit --video outputs/5_team_paper_strict/team_strict_four_agents.mp4
+    python3 -m demos.demo_team --scene four_agents_4 --asynchronous --paper --paper_strict --our_rrt --coordination merit --video outputs/6_team_paper_strict_our_rrt/team_strict_our_rrt_four_agents_4.mp4
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ COLORS = ["tab:blue", "tab:orange", "tab:purple", "tab:brown", "tab:pink", "tab:
 
 
 class TeamFigure:
-    def __init__(self, team: Team, coordination: str, asynchronous: bool = False, paper_strict: bool = False) -> None:
+    def __init__(self, team: Team, coordination: str, asynchronous: bool = False, paper_strict: bool = False, our_rrt: bool = False) -> None:
         self._team = team
         self._coordination = coordination
         self.fig = plt.figure(figsize=(12, 6.75), dpi=120)
@@ -86,6 +87,8 @@ class TeamFigure:
                 "    every 0.2 s. A new bid replaces the old one.",
                 "4. Each robot commits to its plan for 1 s only.",
             ]
+            if our_rrt:
+                lines.append("Trees grow with our CL-RRT, not Algorithm 1.")
         elif asynchronous:
             lines = [
                 "Each robot has its own cycle of 1 s",
@@ -201,6 +204,7 @@ def main() -> None:
     parser.add_argument("--asynchronous", action="store_true", help="each robot runs its own cycles (step 9)")
     parser.add_argument("--paper", action="store_true", help="tree of Algorithm 1, each wheel limited on its own (step 10). The rule of turning in place stays, see the README")
     parser.add_argument("--paper_strict", action="store_true", help="with --asynchronous, also commit only up to t + delta t, random first token, no bid reset (step 11)")
+    parser.add_argument("--our_rrt", action="store_true", help="with --paper, grow the trees with our CLRRT instead of Algorithm 1, each wheel still limited on its own")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max_time", type=float, default=100.0, help="time of the run [s]")
     parser.add_argument("--save", type=str, default=None, help="save the last frame here instead of showing it")
@@ -215,11 +219,13 @@ def main() -> None:
     options = dict(paper_strict=True) if args.paper_strict else {}
     if args.paper_strict and not args.asynchronous:
         parser.error("--paper_strict needs --asynchronous")
+    if args.our_rrt and not args.paper:
+        parser.error("--our_rrt needs --paper, without --paper the trees are already ours")
     team = team_class(
         start_states, goals, controller, coordination=args.coordination, map_path=map_path, seed=args.seed,
-        paper_tree=args.paper, **options,
+        paper_tree=args.paper and not args.our_rrt, **options,
     )
-    figure = TeamFigure(team, args.coordination, asynchronous=args.asynchronous, paper_strict=args.paper_strict)
+    figure = TeamFigure(team, args.coordination, asynchronous=args.asynchronous, paper_strict=args.paper_strict, our_rrt=args.our_rrt)
     writer = None
     if args.video is not None:
         # macro_block_size=2 keeps the figure size, yuv420p only needs even sizes

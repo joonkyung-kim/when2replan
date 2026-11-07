@@ -5,10 +5,10 @@
     This obstacle is not in the paper, use --no_obstacle for the paper's static environment.
 
     Run from DMA-RRT/implementation:
-    python3 -m demos.demo_execution --video outputs/execution.mp4
-    python3 -m demos.demo_execution --no_obstacle --save outputs/execution.png
-    python3 -m demos.demo_execution --paper --video outputs/execution_paper.mp4  # Algorithm 1 of the paper as written
-    python3 -m demos.demo_execution --moving --no_obstacle --video outputs/moving.mp4  # robots with fixed plans in the corridors
+    python3 -m demos.demo_execution --video outputs/2_single_robot/execution.mp4
+    python3 -m demos.demo_execution --no_obstacle --save outputs/2_single_robot/execution.png
+    python3 -m demos.demo_execution --paper --video outputs/2_single_robot/execution_paper.mp4  # Algorithm 1 of the paper as written
+    python3 -m demos.demo_execution --moving --no_obstacle --video outputs/2_single_robot/moving.mp4  # robots with fixed plans in the corridors
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ def get_message(result: CycleResult, has_new_obstacle: bool) -> tuple:
     if result.is_safety_stop:
         return "Safety stop: the committed path became unsafe", "tab:red"
     if result.is_turning:
-        return "Nowhere to go from this heading: turn in place", "tab:purple"
+        return "Nowhere to go from this heading: turn in place next", "tab:purple"
     if result.num_lazy_removed > 0:
         return f"Lazy check removed {result.num_lazy_removed} unsafe path(s), plan changed", "tab:red"
     if has_new_obstacle:
