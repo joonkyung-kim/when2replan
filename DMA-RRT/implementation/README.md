@@ -52,6 +52,7 @@ Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, s
 | `demos/demo_execution.py` | Execution loop: the robot moves, and an obstacle appears on its plan |
 | `demos/demo_team.py` | Team: robots share their plans, with the token holder marked |
 | `demos/demo_sparse_tracking.py` | One when2replan robot (simulator + DWA) tracking the dense Dijkstra path and the sparse waypoint graph, side by side |
+| `demos/demo_time.py` | How time is kept: the shared clock, `root_time`, the time of each node of the plan, and the committed part, for two robots swapping corners |
 | `experiments/compare_cl_rrt.py` | Comparison of the two CL-RRT versions for one planning call |
 | `experiments/compare_execution.py` | Comparison of the two CL-RRT versions in the execution loop |
 | `experiments/compare_moving_obstacles.py` | Comparison of a robot that knows the moving obstacles with one that ignores them |
@@ -72,6 +73,7 @@ The demos write to `outputs/`, which is not in git. The folders sort them by how
 | `5_team_paper_strict/` | The same with `--paper_strict`, `merit` (step 11) | Algorithms 1-5 as in the paper, with the differences listed in step 11 |
 | `6_team_paper_strict_our_rrt/` | The same as `5_team_paper_strict/`, but the trees grow with our CL-RRT (`--our_rrt`) | Algorithms 2-5 as in the paper, Algorithm 1 differs (see "Paper's CL-RRT and ours") |
 | `when2replan_sparse_path/` | when2replan's Dijkstra path as a sparse waypoint graph, and one robot tracking it with DWA | Not part of the paper |
+| `time_explained/` | `demos/demo_time.py` with whole edges committed and with `--commit_one_cycle` | Not part of the paper |
 | `not_paper/` | Earlier versions we no longer consider close to the paper: the first teams, emergency stops, `L1 = 0.3 m` | Differ in several ways |
 
 ## Running
