@@ -59,6 +59,9 @@ Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, s
 | `experiments/compare_team.py` | Comparison of emergency stops, bids, the round-robin token, and no coordination |
 | `experiments/compare_async.py` | Comparison of the timing variants of `AsyncTeam` |
 | `experiments/sparsify_path.py` | Points, length, deviation and unsafe edges of a when2replan Dijkstra path reduced to a sparse waypoint graph |
+| `experiments/when2replan_committed_start.py` | One when2replan robot replanning from where DWA predicts it to be when the new path arrives, against when2replan as it is |
+| `experiments/when2replan_merit_multi_robot.py` | when2replan's multi robot run with a token deciding who replans (merit or round robin), with or without shared timed plans |
+| `experiments/when2replan_shared_plans.py` | Shared timed plans for when2replan: the board of messages, Dijkstra that plans around them, and the DWA cost |
 
 ## Videos and figures
 
@@ -74,6 +77,8 @@ The demos write to `outputs/`, which is not in git. The folders sort them by how
 | `6_team_paper_strict_our_rrt/` | The same as `5_team_paper_strict/`, but the trees grow with our CL-RRT (`--our_rrt`) | Algorithms 2-5 as in the paper, Algorithm 1 differs (see "Paper's CL-RRT and ours") |
 | `when2replan_sparse_path/` | when2replan's Dijkstra path as a sparse waypoint graph, and one robot tracking it with DWA | Not part of the paper |
 | `time_explained/` | `demos/demo_time.py` with whole edges committed and with `--commit_one_cycle` | Not part of the paper |
+| `when2replan_committed_start/` | `experiments/when2replan_committed_start.py`, seeds whose outcome differs between the two starts: `results.yaml`, `comparison/` (side by side videos), `videos/`, `replay/` (the visualizer's pkl files) | Not part of the paper |
+| `when2replan_merit_multi_robot/` | `experiments/when2replan_merit_multi_robot.py`, one folder per robot count (`4robot/`, `6robot/`, `8robot/`, and `6robot_speed2/`, `8robot_speed2/` with `--speed 2.0`): time based replanning, merit and round-robin tokens, with and without shared plans. Each has `grid/` (variants side by side), `videos/`, `token/` (who held the token), `results/` and `replay/` | Not part of the paper |
 | `not_paper/` | Earlier versions we no longer consider close to the paper: the first teams, emergency stops, `L1 = 0.3 m` | Differ in several ways |
 
 ## Running
