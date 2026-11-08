@@ -25,7 +25,7 @@ implementation/
 ├── demos/         figures and videos
 ├── experiments/   comparison tables
 ├── maps/          the open map for ten robots, and the maps read from the paper's figures
-└── outputs/       generated videos and figures, not in git
+└── outputs/       generated videos and figures, not in git (except the when2replan_* folders)
 ```
 
 Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, so that they can import `dma_rrt`.
@@ -65,7 +65,7 @@ Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, s
 
 ## Videos and figures
 
-The demos write to `outputs/`, which is not in git. The folders sort them by how close the algorithm is to the paper:
+The demos write to `outputs/`, which is not in git, except the videos, figures and results of `when2replan_committed_start/` and `when2replan_merit_multi_robot/`. The folders sort them by how close the algorithm is to the paper:
 
 | Folder | Content | Against the paper |
 |---|---|---|
