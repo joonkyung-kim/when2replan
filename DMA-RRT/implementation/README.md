@@ -43,6 +43,7 @@ Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, s
 | `dma_rrt/cooperative.py` | `CooperativeAgent`: emergency stops of Cooperative DMA-RRT (step 7) |
 | `dma_rrt/team.py` | `Team`: robots coordinated with emergency stops (step 7), bids (step 6), a round-robin token (step 5), or not at all |
 | `dma_rrt/async_team.py` | `AsyncTeam`: each robot runs its own cycles on a virtual clock, with frequent bids (step 9), and `paper_strict` for the baseline (step 11) |
+| `dma_rrt/sparse_path.py` | A when2replan Dijkstra path as a sparse waypoint graph (line-of-sight shortcut, RDP), stored in a `Tree`, and resampled for tracking |
 | `dma_rrt/scenarios.py` | Test scenes: robots with fixed plans, robots swapping points on the pillar map, ten robots on the open map, the scenes of Fig. 4 and Fig. 7 of the paper |
 | `maps/make_paper_maps.py` | Makes the maps of Fig. 4 and Fig. 7(a) of the paper, read from the figures |
 | `demos/demo_rrt.py` | Basic RRT: figure and tree growth video |
@@ -50,11 +51,13 @@ Scripts are run as modules from this folder, like `python3 -m demos.demo_rrt`, s
 | `demos/demo_cl_rrt.py` | CL-RRT: figure and video with the simulated robot (`--paper` for the paper's version) |
 | `demos/demo_execution.py` | Execution loop: the robot moves, and an obstacle appears on its plan |
 | `demos/demo_team.py` | Team: robots share their plans, with the token holder marked |
+| `demos/demo_sparse_tracking.py` | One when2replan robot (simulator + DWA) tracking the dense Dijkstra path and the sparse waypoint graph, side by side |
 | `experiments/compare_cl_rrt.py` | Comparison of the two CL-RRT versions for one planning call |
 | `experiments/compare_execution.py` | Comparison of the two CL-RRT versions in the execution loop |
 | `experiments/compare_moving_obstacles.py` | Comparison of a robot that knows the moving obstacles with one that ignores them |
 | `experiments/compare_team.py` | Comparison of emergency stops, bids, the round-robin token, and no coordination |
 | `experiments/compare_async.py` | Comparison of the timing variants of `AsyncTeam` |
+| `experiments/sparsify_path.py` | Points, length, deviation and unsafe edges of a when2replan Dijkstra path reduced to a sparse waypoint graph |
 
 ## Videos and figures
 
@@ -68,6 +71,7 @@ The demos write to `outputs/`, which is not in git. The folders sort them by how
 | `4_team_paper_tree/` | Teams with the paper's tree, each wheel limited on its own, `L1 = 1.5 m` (step 10) | Algorithm 1 as in the paper. Algorithms 2 and 4 differ, see step 11 |
 | `5_team_paper_strict/` | The same with `--paper_strict`, `merit` (step 11) | Algorithms 1-5 as in the paper, with the differences listed in step 11 |
 | `6_team_paper_strict_our_rrt/` | The same as `5_team_paper_strict/`, but the trees grow with our CL-RRT (`--our_rrt`) | Algorithms 2-5 as in the paper, Algorithm 1 differs (see "Paper's CL-RRT and ours") |
+| `when2replan_sparse_path/` | when2replan's Dijkstra path as a sparse waypoint graph, and one robot tracking it with DWA | Not part of the paper |
 | `not_paper/` | Earlier versions we no longer consider close to the paper: the first teams, emergency stops, `L1 = 0.3 m` | Differ in several ways |
 
 ## Running
