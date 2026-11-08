@@ -1,0 +1,684 @@
+- robot: 0
+  outcome: goal
+  time: 20.200000000000003
+  replans: 2
+  travel: 37.74902229066152
+  min_dist: 3.7106866460184347
+  cycles:
+  - cycle: 1
+    holder: 0
+    bid: 46.92
+    replan: 1
+    blocked: false
+    conflict: true
+    cost_current: 85.88
+    cost_new: 38.96
+  - cycle: 2
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 37.4
+    cost_new: 39.17
+  - cycle: 3
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 35.36
+    cost_new: 35.3
+  - cycle: 4
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 33.33
+    cost_new: 33.26
+  - cycle: 5
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 31.29
+    cost_new: 31.27
+  - cycle: 6
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 29.31
+    cost_new: 29.3
+  - cycle: 7
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 27.45
+    cost_new: 27.27
+  - cycle: 8
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 25.39
+    cost_new: 25.76
+  - cycle: 9
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 23.63
+    cost_new: 23.34
+  - cycle: 10
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 21.56
+    cost_new: 21.47
+  - cycle: 11
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 19.56
+    cost_new: 19.51
+  - cycle: 12
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 17.49
+    cost_new: 17.32
+  - cycle: 13
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 15.52
+    cost_new: 15.15
+  - cycle: 14
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 13.47
+    cost_new: 13.02
+  - cycle: 15
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 11.16
+    cost_new: 10.93
+  - cycle: 16
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 9.15
+    cost_new: 8.9
+  - cycle: 17
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 6.98
+    cost_new: 6.9
+  - cycle: 18
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 4.95
+    cost_new: 4.9
+  - cycle: 19
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 2.94
+    cost_new: 2.9
+  - cycle: 20
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 1.15
+    cost_new: .inf
+- robot: 1
+  outcome: goal
+  time: 22.6
+  replans: 4
+  travel: 41.46102410582294
+  min_dist: 3.7106866460184347
+  cycles:
+  - cycle: 1
+    holder: 0
+    bid: 49.97
+    replan: 0
+    blocked: false
+    conflict: true
+    cost_current: 95.17
+    cost_new: 45.21
+  - cycle: 2
+    holder: 1
+    bid: 49.99
+    replan: 1
+    blocked: false
+    conflict: true
+    cost_current: 93.52
+    cost_new: 43.53
+  - cycle: 3
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 41.93
+    cost_new: 43.04
+  - cycle: 4
+    holder: 3
+    bid: 0.62
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 41.1
+    cost_new: 40.48
+  - cycle: 5
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 39.04
+    cost_new: 39.32
+  - cycle: 6
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 37.29
+    cost_new: 37.0
+  - cycle: 7
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 35.12
+    cost_new: 35.0
+  - cycle: 8
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 33.04
+    cost_new: 33.0
+  - cycle: 9
+    holder: 0
+    bid: 1.38
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 31.03
+    cost_new: 29.64
+  - cycle: 10
+    holder: 1
+    bid: 1.59
+    replan: 1
+    blocked: false
+    conflict: false
+    cost_current: 29.15
+    cost_new: 27.55
+  - cycle: 11
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 25.8
+    cost_new: 25.6
+  - cycle: 12
+    holder: 3
+    bid: 1.54
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 23.62
+    cost_new: 22.08
+  - cycle: 13
+    holder: 0
+    bid: 1.5
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 21.36
+    cost_new: 19.87
+  - cycle: 14
+    holder: 1
+    bid: 0.59
+    replan: 1
+    blocked: false
+    conflict: false
+    cost_current: 18.03
+    cost_new: 17.44
+  - cycle: 15
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 15.72
+    cost_new: 15.48
+  - cycle: 16
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 13.51
+    cost_new: 13.48
+  - cycle: 17
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 11.52
+    cost_new: 11.49
+  - cycle: 18
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 9.5
+    cost_new: 9.4
+  - cycle: 19
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 7.48
+    cost_new: 7.4
+  - cycle: 20
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 5.42
+    cost_new: 5.4
+  - cycle: 21
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 3.43
+    cost_new: 3.4
+  - cycle: 22
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 1.53
+    cost_new: .inf
+- robot: 2
+  outcome: goal
+  time: 20.700000000000003
+  replans: 3
+  travel: 36.905809089023414
+  min_dist: 5.225996081953461
+  cycles:
+  - cycle: 1
+    holder: 0
+    bid: 50.09
+    replan: 0
+    blocked: false
+    conflict: true
+    cost_current: 95.49
+    cost_new: 45.4
+  - cycle: 2
+    holder: 1
+    bid: 49.99
+    replan: 0
+    blocked: false
+    conflict: true
+    cost_current: 94.04
+    cost_new: 44.04
+  - cycle: 3
+    holder: 2
+    bid: 51.57
+    replan: 1
+    blocked: false
+    conflict: true
+    cost_current: 91.95
+    cost_new: 40.38
+  - cycle: 4
+    holder: 3
+    bid: 0.59
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 38.85
+    cost_new: 38.27
+  - cycle: 5
+    holder: 0
+    bid: 1.65
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 36.41
+    cost_new: 34.76
+  - cycle: 6
+    holder: 1
+    bid: 1.6
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 34.09
+    cost_new: 32.49
+  - cycle: 7
+    holder: 2
+    bid: 3.46
+    replan: 1
+    blocked: false
+    conflict: false
+    cost_current: 30.98
+    cost_new: 27.52
+  - cycle: 8
+    holder: 3
+    bid: 0.71
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 26.13
+    cost_new: 25.41
+  - cycle: 9
+    holder: 0
+    bid: 42.09
+    replan: 0
+    blocked: true
+    conflict: false
+    cost_current: 123.85
+    cost_new: 81.75
+  - cycle: 10
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 21.22
+    cost_new: 21.21
+  - cycle: 11
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 19.37
+    cost_new: 19.22
+  - cycle: 12
+    holder: 3
+    bid: 100.24
+    replan: 0
+    blocked: true
+    conflict: false
+    cost_current: 117.35
+    cost_new: 17.11
+  - cycle: 13
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 15.09
+    cost_new: 15.03
+  - cycle: 14
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 13.4
+    cost_new: 13.13
+  - cycle: 15
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 11.11
+    cost_new: 10.8
+  - cycle: 16
+    holder: 3
+    bid: 0.67
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 9.27
+    cost_new: 8.6
+  - cycle: 17
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 6.65
+    cost_new: 6.28
+  - cycle: 18
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 5.54
+    cost_new: 5.13
+  - cycle: 19
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 3.94
+    cost_new: 3.72
+  - cycle: 20
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 2.19
+    cost_new: .inf
+- robot: 3
+  outcome: goal
+  time: 20.3
+  replans: 4
+  travel: 37.61451855827913
+  min_dist: 4.338773210960229
+  cycles:
+  - cycle: 1
+    holder: 0
+    bid: 49.87
+    replan: 0
+    blocked: false
+    conflict: true
+    cost_current: 95.3
+    cost_new: 45.43
+  - cycle: 2
+    holder: 1
+    bid: 49.94
+    replan: 0
+    blocked: false
+    conflict: true
+    cost_current: 93.51
+    cost_new: 43.57
+  - cycle: 3
+    holder: 2
+    bid: 51.38
+    replan: 0
+    blocked: false
+    conflict: true
+    cost_current: 91.15
+    cost_new: 39.76
+  - cycle: 4
+    holder: 3
+    bid: 1.0
+    replan: 1
+    blocked: false
+    conflict: false
+    cost_current: 38.6
+    cost_new: 37.6
+  - cycle: 5
+    holder: 0
+    bid: 1.74
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 35.75
+    cost_new: 34.0
+  - cycle: 6
+    holder: 1
+    bid: 1.31
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 33.44
+    cost_new: 32.13
+  - cycle: 7
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 31.4
+    cost_new: 31.07
+  - cycle: 8
+    holder: 3
+    bid: 1.35
+    replan: 1
+    blocked: false
+    conflict: false
+    cost_current: 29.4
+    cost_new: 28.05
+  - cycle: 9
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 26.06
+    cost_new: 26.0
+  - cycle: 10
+    holder: 1
+    bid: 3.64
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 24.2
+    cost_new: 20.56
+  - cycle: 11
+    holder: 2
+    bid: 2.63
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 21.59
+    cost_new: 18.95
+  - cycle: 12
+    holder: 3
+    bid: 2.76
+    replan: 1
+    blocked: false
+    conflict: false
+    cost_current: 19.62
+    cost_new: 16.87
+  - cycle: 13
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 14.92
+    cost_new: 14.87
+  - cycle: 14
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 13.19
+    cost_new: 12.74
+  - cycle: 15
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 10.7
+    cost_new: 10.67
+  - cycle: 16
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 8.86
+    cost_new: 8.69
+  - cycle: 17
+    holder: 0
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 6.82
+    cost_new: 6.43
+  - cycle: 18
+    holder: 1
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 5.15
+    cost_new: 5.12
+  - cycle: 19
+    holder: 2
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 3.13
+    cost_new: 2.92
+  - cycle: 20
+    holder: 3
+    bid: 0.0
+    replan: 0
+    blocked: false
+    conflict: false
+    cost_current: 1.47
+    cost_new: .inf
